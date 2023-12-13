@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Sample SAM Template for sam-app
+
+Resources:
+  api:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Description: "API Gateway endpoint URL"
+      Handler: HandleRequest
+      Runtime: go1.x
+      Events:
+        ProxyResource:
+          Type: HttpApi
+          Properties:
+            PayloadFormatVersion: '2.0'
+            Path: /{proxy+}
+            Method: ANY
+        RootResource:
+          PayloadFormatVersion: '2.0'
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"

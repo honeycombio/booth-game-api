@@ -2,7 +2,13 @@
 
 This is the backend API for the booth game, it's primarily a go app handling those requests.
 
-(right now, there is no local debugging)
+## Local debugging
+
+This uses AWS SAM (Serverless Application Model).
+
+We define the API in `template.yaml`, with it's name etc. this looks for it on the filesystem as a relative path.
+
+There is a convenience script in `run.sh` that deleted the current go package, builds another an runs sam local to get it working.
 
 ## Build and Deploy.
 

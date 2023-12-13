@@ -10,7 +10,8 @@
 		},
 		"ghcr.io/devcontainers-contrib/features/pulumi:1": {},
 		"ghcr.io/devcontainers/features/aws-cli:1": {},
-		"ghcr.io/devcontainers/features/docker-in-docker:2.7.1": {}
+		"ghcr.io/devcontainers/features/docker-in-docker:2.7.1": {},
+		"ghcr.io/customink/codespaces-features/sam-cli:1": {}
 	},
 	"mounts": [
 		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/node/.aws,type=bind,consistency=cached"
