@@ -1,0 +1,45 @@
+name: Build and Deploy
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+    id-token: write # This is required for requesting the JWT
+    contents: read 
+jobs:
+  preview:
+    name: Preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.21'
+      - uses: actions/setup-node@v3.5.0
+        with:
+          node-version: '20'
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+            role-to-assume: arn:aws:iam::657166037864:role/AssumeRoleFromGithubBoothGame
+            role-session-name: previewsession
+            aws-region: eu-west-1
+
+      - name: build the go src
+        run: |
+          cd src
+          GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ../HandleRequest main.go && zip ../HandleRequest.zip ../HandleRequest
+
+        ## run npm install in the infra directory
+      - name: Install dependencies
+        run: npm install
+        working-directory: infra
+      - uses: pulumi/actions@v3
+        with:
+          work-dir: infra
+          command: preview
+          stack-name: honeycomb-devrel/booth-game-api 
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
