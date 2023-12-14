@@ -1,3 +1,4 @@
 /bin/
 node_modules
-HandleRequest
+/api
+/api.zip

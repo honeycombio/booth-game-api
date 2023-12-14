@@ -1,14 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import * as awsx from "@pulumi/awsx";
-
 
 const coreInfra = new pulumi.StackReference("honeycomb-devrel/booth-game/booth-game");
-
 const apigatewayId = coreInfra.requireOutput("apiGatewayId");
-
 const gateway = apigatewayId.apply(id => aws.apigatewayv2.getApi({apiId: id}));
-const functionName = ""
 
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
     statements: [{
@@ -22,8 +17,7 @@ const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
     }],
 });
 
-// functionexecution role for lambda
-const role = new aws.iam.Role("execution-role", {
+const lambdaExecutionRole = new aws.iam.Role("execution-role", {
     assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
     inlinePolicies: [
         {
@@ -33,18 +27,18 @@ const role = new aws.iam.Role("execution-role", {
     ]});
     
     
-const myLambda = new aws.lambda.Function("api-lambda", {
-    role: role.arn,
+const apiLambda = new aws.lambda.Function("api-lambda", {
+    role: lambdaExecutionRole.arn,
     runtime: aws.lambda.Go1dxRuntime,
 
-    code: new pulumi.asset.FileArchive("../HandleRequest.zip"),
-    handler: "HandleRequest",
+    code: new pulumi.asset.FileArchive("../api.zip"),
+    handler: "api",
 });
 
 const integration = new aws.apigatewayv2.Integration("api-gateway-integration", {
     apiId: gateway.id,
     integrationType: "AWS_PROXY",
-    integrationUri: myLambda.arn,
+    integrationUri: apiLambda.arn,
     payloadFormatVersion: "2.0",
 });
 
@@ -64,7 +58,7 @@ const stage = new aws.apigatewayv2.Stage("api-gateway-stage", {
 
 var lambdaPermission = new aws.lambda.Permission("api-lambda-permission", {
     action: "lambda:InvokeFunction",
-    function: myLambda.name,
+    function: apiLambda.name,
     principal: "apigateway.amazonaws.com",
     sourceArn: pulumi.interpolate`${gateway.executionArn}/*/*`,
 });

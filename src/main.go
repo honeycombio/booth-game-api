@@ -9,7 +9,7 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-func HandleRequest(context context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func Api(context context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	ApiResponse := events.APIGatewayV2HTTPResponse{}
 	// Switch for identifying the HTTP request
 	switch request.RequestContext.HTTP.Method {
@@ -40,5 +40,5 @@ func HandleRequest(context context.Context, request events.APIGatewayV2HTTPReque
 }
 
 func main() {
-	lambda.Start(HandleRequest)
+	lambda.Start(Api)
 }

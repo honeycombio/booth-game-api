@@ -8,15 +8,9 @@ Resources:
     Type: AWS::Serverless::Function 
     Properties:
       Description: "API Gateway endpoint URL"
-      Handler: HandleRequest
+      Handler: api
       Runtime: go1.x
       Events:
-        ProxyResource:
-          Type: HttpApi
-          Properties:
-            PayloadFormatVersion: '2.0'
-            Path: /{proxy+}
-            Method: ANY
         RootResource:
           PayloadFormatVersion: '2.0'
           Type: HttpApi

@@ -15,8 +15,7 @@ There is a convenience script in `run.sh` that deleted the current go package, b
 Build and package
 
 ```sh
-cd src
-GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ../HandleRequest main.go && zip ../HandleRequest.zip ../HandleRequest
+GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/main.go && zip api.zip api
 ```
 
 Make sure the packages are restored
