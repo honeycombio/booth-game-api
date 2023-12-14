@@ -3,6 +3,7 @@ import * as aws from "@pulumi/aws";
 
 const coreInfra = new pulumi.StackReference("honeycomb-devrel/booth-game/booth-game");
 const apigatewayId = coreInfra.requireOutput("apiGatewayId");
+const cloudFrontDomain = coreInfra.requireOutput("cloudfrontDomainName")
 const gateway = apigatewayId.apply(id => aws.apigatewayv2.getApi({apiId: id}));
 
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
@@ -62,3 +63,5 @@ var lambdaPermission = new aws.lambda.Permission("api-lambda-permission", {
     principal: "apigateway.amazonaws.com",
     sourceArn: pulumi.interpolate`${gateway.executionArn}/*/*`,
 });
+
+export const frontendDomain = cloudFrontDomain
