@@ -6,37 +6,17 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/valyala/fastjson"
 )
 
 func Api(context context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-	ApiResponse := events.APIGatewayV2HTTPResponse{}
-	// Switch for identifying the HTTP request
-	switch request.RequestContext.HTTP.Method {
-	case "GET":
-		// Obtain the QueryStringParameter
-		name := request.QueryStringParameters["name"]
-		if name != "" {
-			ApiResponse = events.APIGatewayV2HTTPResponse{Body: "Hey " + name + " welcome! ", StatusCode: 200}
-		} else {
-			ApiResponse = events.APIGatewayV2HTTPResponse{Body: "Error: Query Parameter name missing", StatusCode: 500}
-		}
+	methodPath := request.RequestContext.HTTP.Method + " " + request.RequestContext.HTTP.Path
 
-	case "POST":
-		//validates json and returns error if not working
-		err := fastjson.Validate(request.Body)
-
-		if err != nil {
-			body := "Error: Invalid JSON payload ||| " + fmt.Sprint(err) + " Body Obtained" + "||||" + request.Body
-			ApiResponse = events.APIGatewayV2HTTPResponse{Body: body, StatusCode: 500}
-		} else {
-			ApiResponse = events.APIGatewayV2HTTPResponse{Body: request.Body, StatusCode: 200}
-		}
+	switch methodPath {
+	case "GET /api/questions":
+		return getQuestions(request)
 	default:
-		ApiResponse = events.APIGatewayV2HTTPResponse{Body: "Error: Invalid HTTP Method", StatusCode: 500}
+		return events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Unhandled Route %v", methodPath), StatusCode: 404}, nil
 	}
-	// Response
-	return ApiResponse, nil
 }
 
 func main() {

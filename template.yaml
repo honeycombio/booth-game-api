@@ -15,7 +15,7 @@ Resources:
           PayloadFormatVersion: '2.0'
           Type: HttpApi
           Properties:
-            Path: /
+            Path: /api/{proxy+}
             Method: ANY
 
 Outputs:

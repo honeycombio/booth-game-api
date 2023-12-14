@@ -29,8 +29,7 @@ jobs:
 
       - name: build the go src
         run: |
-          cd src
-          GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ../HandleRequest main.go && zip ../HandleRequest.zip ../HandleRequest
+          GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go && zip api.zip api
 
         ## run npm install in the infra directory
       - name: Install dependencies
