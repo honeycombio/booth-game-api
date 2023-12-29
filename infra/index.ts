@@ -4,6 +4,8 @@ import * as aws from "@pulumi/aws";
 const coreInfra = new pulumi.StackReference("honeycomb-devrel/booth-game/booth-game");
 const apigatewayId = coreInfra.requireOutput("apiGatewayId");
 const gateway = apigatewayId.apply(id => aws.apigatewayv2.getApi({apiId: id}));
+const config = new pulumi.Config();
+const openAIKey = config.requireSecret("openai-api-key");
 
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
     statements: [{
@@ -33,6 +35,11 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
 
     code: new pulumi.asset.FileArchive("../api.zip"),
     handler: "api",
+    environment: {
+        variables: {
+            "openai_key": openAIKey,
+        }
+    }
 });
 
 const integration = new aws.apigatewayv2.Integration("api-gateway-integration", {

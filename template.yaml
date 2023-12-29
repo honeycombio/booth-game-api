@@ -4,7 +4,7 @@ Description: >
   Sample SAM Template for sam-app
 
 Resources:
-  api:
+  API:
     Type: AWS::Serverless::Function 
     Properties:
       Description: "API Gateway endpoint URL"
@@ -17,6 +17,9 @@ Resources:
           Properties:
             Path: /api/{proxy+}
             Method: ANY
+      Environment:
+        Variables:
+          openai_key:
 
 Outputs:
   WebEndpoint:

@@ -2,6 +2,6 @@
     {
         "question": "What is Observability?",
         "id": "c954ab47-832c-43b1-b3de-d6f9ba995223",
-        "prompt_check": "Give a score between 0 and 100 on whether the answer includes information about asking questions about their system from telemetry signals. Deduct points for focusing on three pillars or other signal types"
+        "prompt_check": "whether the answer includes information about asking questions about their system from telemetry signals. Deduct points for focusing on three pillars or other signal types"
     }
 ]

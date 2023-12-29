@@ -1,2 +1,4 @@
 config:
   aws:region: eu-west-1
+  booth-game:openai-api-key:
+    secure: AAABAEbeA5uhDqYWU8Fwjl8vJ4881ezM6tvKIX+0WampIrujA5WNsY4HwkvrdDK7ZZdQu+JIvwEICYvMAA2sfto013DN6/25TABim9nMADF8VXI=

@@ -8,6 +8,16 @@ This uses AWS SAM (Serverless Application Model).
 
 We define the API in `template.yaml`, with it's name etc. this looks for it on the filesystem as a relative path.
 
+You'll need an OpenAI key, put this in a file named `environment.json` in the root directory, with the format:
+
+```json
+{
+    "API": {
+        "openai_key": "<key>"
+    }
+}
+```
+
 There is a convenience script in `run.sh` that deleted the current go package, builds another an runs sam local to get it working.
 
 ## Build and Deploy.
