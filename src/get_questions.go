@@ -1,7 +1,8 @@
 package main
 
 import (
-	"embed"
+	"encoding/json"
+	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
@@ -13,16 +14,20 @@ type Question struct {
 	PromptCheck string    `json:"prompt_check"`
 }
 
-//go:embed questions.json
-var questionList embed.FS
-
-var questions, _ = questionList.ReadFile("questions.json")
-
 func getQuestions(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-	// return a question struct as json
+
+	eventName := getEventName(request)
+
+	questions := eventQuestions[eventName]
+
+	questionsJson, err := json.Marshal(questions)
+	if err != nil {
+		fmt.Printf("Error marshalling questions: %v\n", err)
+		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
+	}
 
 	return events.APIGatewayV2HTTPResponse{
-		Body:       string(questions),
+		Body:       string(questionsJson),
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		StatusCode: 200}, nil
 }

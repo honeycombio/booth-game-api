@@ -20,22 +20,17 @@ type AnswerBody struct {
 
 func postAnswer(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 
+	eventName := getEventName(request)
+
 	path := request.RequestContext.HTTP.Path
 	pathSplit := strings.Split(path, "/")
 	questionId := pathSplit[2]
 
-	var questionList []Question
-
-	err := json.Unmarshal(questions, &questionList)
-	if err != nil {
-		fmt.Printf("Error unmarshalling questions: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error 1", StatusCode: 500}, nil
-	}
-
 	var prompt string
 	var question string
+	eventQuestions := eventQuestions[eventName]
 
-	for _, v := range questionList {
+	for _, v := range eventQuestions {
 		if v.Id.String() == questionId {
 			prompt = v.PromptCheck
 			question = v.Question
@@ -44,7 +39,7 @@ func postAnswer(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTP
 	}
 
 	answer := AnswerBody{}
-	err = json.Unmarshal([]byte(request.Body), &answer)
+	err := json.Unmarshal([]byte(request.Body), &answer)
 	if err != nil {
 		fmt.Printf("Error unmarshalling answer: %v\n", err)
 		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error 2", StatusCode: 500}, nil
