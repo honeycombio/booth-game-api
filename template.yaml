@@ -20,6 +20,8 @@ Resources:
       Environment:
         Variables:
           openai_key:
+          OTEL_EXPORTER_OTLP_ENDPOINT:
+          OTEL_EXPORTER_OTLP_INSECURE:
 
 Outputs:
   WebEndpoint:

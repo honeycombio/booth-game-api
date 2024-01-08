@@ -29,7 +29,10 @@
 	"customizations": {
 		"vscode": {
 		  "settings": {},
-		  "extensions": ["github.vscode-github-actions"]
+		  "extensions": [
+			"github.vscode-github-actions",
+			"humao.rest-client"
+		]
 		}
 	  }
 
