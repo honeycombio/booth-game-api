@@ -31,6 +31,7 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 		methodPath := request.RequestContext.HTTP.Method + " " + request.RequestContext.HTTP.Path
 		response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Unhandled Route %v", methodPath), StatusCode: 404}
 	} else {
+		lambdaSpan.SetName(fmt.Sprintf("%s %s", endpoint.method, endpoint.pathTemplate))
 		response, err = getResponseFromHandler(currentContext, endpoint, request)
 		if err != nil {
 			lambdaSpan.RecordError(err)
