@@ -1,12 +1,22 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/aws/aws-lambda-go/events"
 )
+
+var getEventsEndpoint = apiEndpoint{
+	"GET",
+	"/api/events",
+	regexp.MustCompile("^/api/events$"),
+	getEvents,
+	false,
+}
 
 //go:embed questions/*
 var eventDirectories embed.FS
@@ -15,7 +25,7 @@ var eventsWithQuestions, _ = eventDirectories.ReadDir("questions")
 
 var eventQuestions = parseEvents()
 
-func getEvents(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func getEvents(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	eventNames := []string{}
 	for _, v := range eventsWithQuestions {
 		if v.IsDir() {

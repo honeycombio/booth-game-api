@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -19,34 +20,16 @@ import (
 )
 
 var apiEndpoints = []apiEndpoint{
-	{
-		"GET",
-		"/api/events",
-		regexp.MustCompile("^/api/events$"),
-		getEvents,
-		false,
-	},
-	{
-		"GET",
-		"/api/questions",
-		regexp.MustCompile("^/api/questions$"),
-		getQuestions,
-		true,
-	},
-	{
-		"POST",
-		"/api/questions/{questionId}/answer",
-		regexp.MustCompile("^/api/questions/([^/]+)/answer$"),
-		postAnswer,
-		true,
-	},
+	getEventsEndpoint,
+	getQuestionsEndpoint,
+	postAnswerEndpoint,
 }
 
 type apiEndpoint struct {
 	method        string
 	pathTemplate  string
 	pathRegex     *regexp.Regexp
-	handler       interface{}
+	handler       func(context.Context, events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error)
 	requiresEvent bool
 }
 
@@ -55,6 +38,9 @@ const (
 )
 
 func Api(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
+	defer cleanup()
+
 	span := oteltrace.SpanFromContext(currentContext)
 	span.SetAttributes(
 		semconv.URLPath(request.RequestContext.HTTP.Path),
@@ -66,7 +52,6 @@ func Api(currentContext context.Context, request events.APIGatewayV2HTTPRequest)
 	)
 
 	methodPath := request.RequestContext.HTTP.Method + " " + request.RequestContext.HTTP.Path
-
 	response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Unhandled Route %v", methodPath), StatusCode: 404}
 
 	for _, v := range apiEndpoints {
@@ -85,7 +70,7 @@ func Api(currentContext context.Context, request events.APIGatewayV2HTTPRequest)
 				}
 			}
 
-			response, err = v.handler.(func(events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error))(request)
+			response, err = v.handler(currentContext, request)
 		}
 	}
 

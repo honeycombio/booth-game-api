@@ -4,11 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/sashabaranov/go-openai"
 )
+
+var postAnswerEndpoint = apiEndpoint{
+	"POST",
+	"/api/questions/{questionId}/answer",
+	regexp.MustCompile("^/api/questions/([^/]+)/answer$"),
+	postAnswer,
+	true,
+}
 
 const (
 	start_system_prompt = "You are a quizmaster validating people's answers who gives a score between 0 and 100. You provide the output as a json object in the format { \"score\": \"{score}\", \"better_answer\": \"{an answer that would improve the score}\"}"
@@ -18,7 +27,7 @@ type AnswerBody struct {
 	Answer string `json:"answer"`
 }
 
-func postAnswer(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 
 	eventName := getEventName(request)
 
@@ -42,12 +51,12 @@ func postAnswer(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTP
 	err := json.Unmarshal([]byte(request.Body), &answer)
 	if err != nil {
 		fmt.Printf("Error unmarshalling answer: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error 2", StatusCode: 500}, nil
+		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
 	}
 
 	client := openai.NewClient(settings.OpenAIKey)
 	resp, err := client.CreateChatCompletion(
-		context.Background(),
+		currentContext,
 		openai.ChatCompletionRequest{
 			ResponseFormat: &openai.ChatCompletionResponseFormat{
 				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
@@ -77,7 +86,7 @@ func postAnswer(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTP
 
 	if err != nil {
 		fmt.Printf("ChatCompletion error: %v\n", err)
-		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error 3", StatusCode: 500}, nil
+		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
 	}
 	return events.APIGatewayV2HTTPResponse{Body: resp.Choices[0].Message.Content, StatusCode: 200}, nil
 }

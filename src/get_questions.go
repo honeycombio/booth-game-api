@@ -1,12 +1,22 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 )
+
+var getQuestionsEndpoint = apiEndpoint{
+	"GET",
+	"/api/questions",
+	regexp.MustCompile("^/api/questions$"),
+	getQuestions,
+	true,
+}
 
 type QuestionsResponse struct {
 	QuestionSet string     `json:"question_set"`
@@ -19,7 +29,7 @@ type Question struct {
 	PromptCheck string    `json:"prompt_check"`
 }
 
-func getQuestions(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func getQuestions(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 
 	eventName := getEventName(request)
 
