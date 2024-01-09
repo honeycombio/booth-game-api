@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/sashabaranov/go-openai"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var postAnswerEndpoint = apiEndpoint{
@@ -54,7 +56,15 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
 	}
 
-	client := openai.NewClient(settings.OpenAIKey)
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	openAIConfig := openai.DefaultConfig(settings.OpenAIKey)
+	openAIConfig.HTTPClient = &httpClient
+
+	client := openai.NewClientWithConfig(openAIConfig)
+
 	resp, err := client.CreateChatCompletion(
 		currentContext,
 		openai.ChatCompletionRequest{
