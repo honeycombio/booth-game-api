@@ -11,7 +11,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -110,10 +110,10 @@ func createTracerProvider(currentContext context.Context) *trace.TracerProvider 
 			semconv.ServiceVersion("0.0.1"),
 		))
 
-	gRPCexporter, _ := otlptracegrpc.New(currentContext)
+	httpExporter, _ := otlptracehttp.New(currentContext)
 
 	tracerProvider := trace.NewTracerProvider(
-		trace.WithBatcher(gRPCexporter),
+		trace.WithBatcher(httpExporter),
 		trace.WithResource(resource))
 
 	otel.SetTracerProvider(tracerProvider)
