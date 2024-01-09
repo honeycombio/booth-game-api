@@ -3,6 +3,7 @@ import * as aws from "@pulumi/aws";
 
 const coreInfra = new pulumi.StackReference("honeycomb-devrel/booth-game/booth-game");
 const apigatewayId = coreInfra.requireOutput("apiGatewayId");
+const collectorHostName = coreInfra.requireOutput("collectorHostname");
 const gateway = apigatewayId.apply(id => aws.apigatewayv2.getApi({apiId: id}));
 const config = new pulumi.Config();
 const openAIKey = config.requireSecret("openai-api-key");
@@ -38,6 +39,8 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
     environment: {
         variables: {
             "openai_key": openAIKey,
+            "OTEL_EXPORTER_OTLP_ENDPOINT": pulumi.interpolate`http://${collectorHostName}`,
+            "OTEL_EXPORTER_OTLP_INSECURE": "true",
         }
     }
 });
