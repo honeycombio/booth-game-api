@@ -54,33 +54,51 @@ const (
 	default_event = "devopsdays_whenever"
 )
 
-func Api(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func Api(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	span := oteltrace.SpanFromContext(currentContext)
 	span.SetAttributes(
-		semconv.HTTPURL(request.RequestContext.HTTP.Path),
-		semconv.HTTPMethod(request.RequestContext.HTTP.Method))
+		semconv.URLPath(request.RequestContext.HTTP.Path),
+		semconv.HTTPMethod(request.RequestContext.HTTP.Method),
+		semconv.ServerAddress(request.RequestContext.DomainName),
+		semconv.ClientAddress(request.RequestContext.HTTP.SourceIP),
+		semconv.URLScheme(request.RequestContext.HTTP.Protocol),
+		semconv.UserAgentOriginal(request.RequestContext.HTTP.UserAgent),
+	)
+
+	methodPath := request.RequestContext.HTTP.Method + " " + request.RequestContext.HTTP.Path
+
+	response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Unhandled Route %v", methodPath), StatusCode: 404}
 
 	for _, v := range apiEndpoints {
 		if v.method == request.RequestContext.HTTP.Method &&
 			v.pathRegex.MatchString(request.RequestContext.HTTP.Path) {
 
 			span.SetName(fmt.Sprintf("%s %s", v.method, v.pathTemplate))
+			span.SetAttributes(semconv.HTTPRoute(v.pathTemplate))
 			if v.requiresEvent {
 				eventName := getEventName(request)
 				if _, eventFound := eventQuestions[eventName]; !eventFound {
-					return events.APIGatewayV2HTTPResponse{
+					response = events.APIGatewayV2HTTPResponse{
 						Body:       fmt.Sprintf("Couldn't find event name %s", eventName),
 						StatusCode: 404,
-					}, nil
+					}
 				}
 			}
 
-			return v.handler.(func(events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error))(request)
+			response, err = v.handler.(func(events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error))(request)
 		}
 	}
-	methodPath := request.RequestContext.HTTP.Method + " " + request.RequestContext.HTTP.Path
 
-	return events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Unhandled Route %v", methodPath), StatusCode: 404}, nil
+	if err != nil {
+		span.RecordError(err)
+	}
+
+	span.SetAttributes(
+		semconv.HTTPResponseStatusCode(int(response.StatusCode)),
+		semconv.HTTPResponseBodySize(len(response.Body)),
+	)
+	return response, err
+
 }
 
 var settings struct {
