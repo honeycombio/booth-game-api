@@ -36,6 +36,7 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
 
     code: new pulumi.asset.FileArchive("../api.zip"),
     handler: "api",
+    timeout: 40,
     environment: {
         variables: {
             "openai_key": openAIKey,
