@@ -1,8 +1,10 @@
 GET http://localhost:3000/api/questions
+x-attendee-api-KEY: OWceriKVQbJb4E4vnETfiG
 
 ###
 
 POST http://localhost:3000/api/questions/c954ab47-832c-43b1-b3de-d6f9ba995223/answer
+x-attendee-api-KEY: OWceriKVQbJb4E4vnETfiG
 
 {
     "answer": "it's about three pillars"

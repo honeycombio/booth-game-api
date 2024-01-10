@@ -10,6 +10,7 @@ Resources:
       Description: "API Gateway endpoint URL"
       Handler: api
       Runtime: go1.x
+      Timeout: 10
       Events:
         RootResource:
           PayloadFormatVersion: '2.0'

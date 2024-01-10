@@ -5,10 +5,14 @@ receivers:
 
 processors:
   batch:
+  filter:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["app.honeycomb_api_key"] == nil
   groupbyattrs/honeycomb_api_key:
     keys:
       - app.honeycomb_api_key
-
 
 exporters:
   otlp:
@@ -31,7 +35,6 @@ exporters:
       "x-honeycomb-team": "$HONEYCOMB_API_KEY"
       "x-honeycomb-dataset": "booth-game-metrics"
 
-
 extensions:
   health_check:
   headers_setter:
@@ -53,11 +56,11 @@ service:
 
     traces/attendee_ingest:
       receivers: [otlp]
-      processors: [groupbyattrs/honeycomb_api_key]
+      processors: [filter, groupbyattrs/honeycomb_api_key]
       exporters: [resourceattr_to_context]
     traces/attendee_export:
       receivers: [resourceattr_to_context]
-      processors: [batch]
+      processors: []
       exporters: [otlp/attendee_traces]
 
     metrics:
