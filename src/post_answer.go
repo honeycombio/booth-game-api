@@ -31,6 +31,8 @@ type AnswerBody struct {
 
 func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 
+	currentContext, postQuestionSpan := tracer.Start(currentContext, "Answer Question")
+	defer postQuestionSpan.End()
 	eventName := getEventName(request)
 
 	path := request.RequestContext.HTTP.Path

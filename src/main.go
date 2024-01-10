@@ -10,19 +10,27 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/jessevdk/go-flags"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
+	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 const (
-	default_event = "devopsdays_whenever"
+	default_event                  = "devopsdays_whenever"
+	ATTENDEE_API_KEY_HEADER        = "X-Attendee-Api-Key"
+	ATTENDEE_API_KEY_ATTRIBUTE_KEY = "app.honeycomb_api_key"
 )
+
+var tracer oteltrace.Tracer
 
 func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
 	defer cleanup()
 
-	// get lambdaSpan from current context
+	attendeeApiKey := request.Headers[ATTENDEE_API_KEY_HEADER]
+	currentContext = SetApiKeyInBaggage(currentContext, attendeeApiKey)
+
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
+	lambdaSpan.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
 	addHttpRequestAttributesToSpan(lambdaSpan, request)
 
 	endpoint, endpointFound := api.findEndpoint(request.RequestContext.HTTP.Method, request.RequestContext.HTTP.Path)
@@ -56,6 +64,7 @@ func main() {
 
 	tracerProvider := createTracerProvider(currentContext)
 
+	tracer = tracerProvider.Tracer("booth-game-backend")
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(ApiRouter,
 			otellambda.WithFlusher(tracerProvider),

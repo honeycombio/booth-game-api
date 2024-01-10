@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -23,8 +24,13 @@ func createTracerProvider(currentContext context.Context) *sdktrace.TracerProvid
 
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(httpExporter),
-		sdktrace.WithResource(resource))
+		sdktrace.WithResource(resource),
+		sdktrace.WithSpanProcessor(NewHoneycombApiKeyProcessor()))
 
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
 	otel.SetTracerProvider(tracerProvider)
 
 	return tracerProvider
