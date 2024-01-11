@@ -27,6 +27,7 @@ type Question struct {
 	Id          uuid.UUID `json:"id"`
 	Question    string    `json:"question"`
 	PromptCheck string    `json:"prompt_check"`
+	BestAnswer  string    `json:"best_answer"`
 }
 
 func getQuestions(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {

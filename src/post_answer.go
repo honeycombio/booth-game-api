@@ -22,7 +22,7 @@ var postAnswerEndpoint = apiEndpoint{
 }
 
 const (
-	start_system_prompt = "You are a quizmaster validating people's answers who gives a score between 0 and 100. You provide the output as a json object in the format { \"score\": \"{score}\", \"better_answer\": \"{an answer that would improve the score}\"}"
+	start_system_prompt = "You are a quizmaster, who is also an Observability evangelist, validating people's answers who gives a score between 0 and 100. You provide the output as a json object in the format { \"score\": \"{score}\", \"better_answer\": \"{an answer that would improve the score}\"}"
 )
 
 type AnswerBody struct {
@@ -37,16 +37,18 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	path := request.RequestContext.HTTP.Path
 	pathSplit := strings.Split(path, "/")
-	questionId := pathSplit[2]
+	questionId := pathSplit[3]
 
 	var prompt string
 	var question string
+	var bestanswer string
 	eventQuestions := eventQuestions[eventName]
 
 	for _, v := range eventQuestions {
 		if v.Id.String() == questionId {
 			prompt = v.PromptCheck
 			question = v.Question
+			bestanswer = v.BestAnswer
 			break
 		}
 	}
@@ -84,15 +86,19 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 				},
 				{
 					Role:    openai.ChatMessageRoleAssistant,
-					Content: fmt.Sprintf("%v %v", "I'm looking for ", prompt),
+					Content: fmt.Sprintf("%v %v", "You're looking for ", prompt),
 				},
 				{
 					Role:    openai.ChatMessageRoleAssistant,
-					Content: question,
+					Content: fmt.Sprintf("This is the question: %s", question),
+				},
+				{
+					Role:    openai.ChatMessageRoleAssistant,
+					Content: fmt.Sprintf("This is ideal answer: %s", bestanswer),
 				},
 				{
 					Role:    openai.ChatMessageRoleUser,
-					Content: answer.Answer,
+					Content: fmt.Sprintf("This is the contestant's answer: %s", answer.Answer),
 				},
 			},
 		},
