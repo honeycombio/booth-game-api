@@ -62,7 +62,6 @@ service:
       exporters: [resourceattr_to_context]
     traces/attendee_export:
       receivers: [resourceattr_to_context]
-      processors: [batch]
       exporters: [otlp/attendee_traces]
 
     metrics:
