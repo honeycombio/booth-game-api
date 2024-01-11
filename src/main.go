@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -16,7 +17,7 @@ import (
 
 const (
 	default_event                  = "devopsdays_whenever"
-	ATTENDEE_API_KEY_HEADER        = "X-Attendee-Api-Key"
+	ATTENDEE_API_KEY_HEADER        = "x-honeycomb-api-key"
 	ATTENDEE_API_KEY_ATTRIBUTE_KEY = "app.honeycomb_api_key"
 )
 
@@ -26,7 +27,13 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
 	defer cleanup()
 
-	attendeeApiKey := request.Headers[ATTENDEE_API_KEY_HEADER]
+	var attendeeApiKey string
+	for k, v := range request.Headers {
+		if strings.ToLower(k) == ATTENDEE_API_KEY_HEADER {
+			attendeeApiKey = v
+			break
+		}
+	}
 	currentContext = SetApiKeyInBaggage(currentContext, attendeeApiKey)
 
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)

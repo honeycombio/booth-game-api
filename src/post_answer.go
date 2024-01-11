@@ -54,7 +54,9 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	answer := AnswerBody{}
 	err := json.Unmarshal([]byte(request.Body), &answer)
 	if err != nil {
-		fmt.Printf("Error unmarshalling answer: %v\n", err)
+		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
+		postQuestionSpan.RecordError(newErr)
+
 		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
 	}
 
@@ -97,7 +99,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	)
 
 	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
+		postQuestionSpan.RecordError(err)
 		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
 	}
 	return events.APIGatewayV2HTTPResponse{Body: resp.Choices[0].Message.Content, StatusCode: 200}, nil
