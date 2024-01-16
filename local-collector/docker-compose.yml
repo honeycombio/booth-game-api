@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - ADDITIONAL_REPOS=github.com/martinjt/resourceattrtocontextconnector
     volumes:
       - ./config.yaml:/config.yaml
     ports:

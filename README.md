@@ -13,7 +13,9 @@ You'll need an OpenAI key, put this in a file named `environment.json` in the ro
 ```json
 {
     "API": {
-        "openai_key": "<key>"
+        "openai_key": "<key>",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
+        "OTEL_EXPORTER_OTLP_INSECURE": true
     }
 }
 ```
@@ -25,7 +27,7 @@ There is a convenience script in `run.sh` that deleted the current go package, b
 Build and package
 
 ```sh
-GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/main.go && zip api.zip api
+GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go && zip api.zip api
 ```
 
 Make sure the packages are restored

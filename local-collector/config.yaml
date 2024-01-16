@@ -9,13 +9,15 @@ processors:
     error_mode: ignore
     traces:
       span:
-        - attributes["app.honeycomb_api_key"] == nil
+        - attributes["app.honeycomb_api_key"] != nil
   groupbyattrs/honeycomb_api_key:
     keys:
       - app.honeycomb_api_key
 
 
 exporters:
+  debug:
+    verbosity: detailed
   otlp:
     endpoint: "api.honeycomb.io:443"
     headers:
