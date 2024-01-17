@@ -1,0 +1,12 @@
+{
+    "rest-client.environmentVariables": {
+        "$shared": {
+            "hostname": "http://localhost:3000",
+        },
+        "local":{
+        },
+        "onlyspans": {
+            "hostname": "https://quiz.onlyspans.com",
+        }
+    }
+}

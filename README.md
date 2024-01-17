@@ -26,7 +26,17 @@ You'll need an OpenAI key, put this in a file named `environment.json` in the ro
 
 `./run.sh`
 
-and then to test, open `http_tests/questions.http` and click the tiny "Send Request" above the examples.
+## Testing
+
+The API requires a Honeycomb API key for the attendee. To test the you'll need to add that header as `x-honeycomb-api-key`.
+
+### Testing with Rest client in VSCode
+
+There are built in tests in the repository using rest client for VSCode. These tests live in the `http_tests` folder.
+
+To use this, you'll need to setup a `.env` file in that directory with the Attendee's API key. There is a `.env.sample` file to copy to get the format right.
+
+To test, open one of the `.http` files and click the tiny "Send Request" above the examples.
 
 ## Build and Deploy.
 

@@ -1,10 +1,13 @@
-GET http://localhost:3000/api/questions
-X-Honeycomb-Api-Key: ${HONEYCOMB_API_KEY}
+@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}}
+
+GET {{hostname}}/api/questions
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
 
 ###
 
-POST http://localhost:3000/api/questions/c954ab47-832c-43b1-b3de-d6f9ba995223/answer
-X-Honeycomb-Api-Key: ${HONEYCOMB_API_KEY}
+POST {{hostname}}/api/questions/c954ab47-832c-43b1-b3de-d6f9ba995223/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+Content-Type: application/json
 
 {
     "answer": "it's about three pillars"
