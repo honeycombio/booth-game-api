@@ -22,11 +22,13 @@ You'll need an OpenAI key, put this in a file named `environment.json` in the ro
 }
 ```
 
-There is a convenience script in `run.sh` for the rest.
+## Run locally
+
+`./run.sh`
+
+and then to test, open `http_tests/questions.http` and click the tiny "Send Request" above the examples.
 
 ## Build and Deploy.
-
-(this is in run.sh)
 
 Build and package
 
