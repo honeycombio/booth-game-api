@@ -1,0 +1,7 @@
+{
+    "API": {
+        "openai_key": "<key>",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
+        "OTEL_EXPORTER_OTLP_INSECURE": true
+    }
+}

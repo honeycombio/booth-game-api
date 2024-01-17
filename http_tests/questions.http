@@ -1,8 +1,10 @@
 GET http://localhost:3000/api/questions
+X-Honeycomb-Api-Key: ${HONEYCOMB_API_KEY}
 
 ###
 
 POST http://localhost:3000/api/questions/c954ab47-832c-43b1-b3de-d6f9ba995223/answer
+X-Honeycomb-Api-Key: ${HONEYCOMB_API_KEY}
 
 {
     "answer": "it's about three pillars"
