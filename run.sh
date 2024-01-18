@@ -9,7 +9,8 @@ if [ ! -e "environment.json" ]; then
     exit 1
 fi
 
-# docker-compose -f local-collector/docker-compose.yml up -d
+echo "Starting the collector..." # the function will 502 if the collector is down!
+docker-compose -f local-collector/docker-compose.yml up -d
 
 rm api
 echo "Building..."

@@ -13,10 +13,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const HoneycombDatasetName = "booth-game-backend"
+
 func createTracerProvider(currentContext context.Context) *sdktrace.TracerProvider {
 	resource, _ := resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
-			semconv.ServiceName("booth-game-backend"),
+			semconv.ServiceName(HoneycombDatasetName),
 			semconv.ServiceVersion("0.0.1"),
 		))
 

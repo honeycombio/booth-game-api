@@ -38,6 +38,16 @@ To use this, you'll need to setup a `.env` file in that directory with the Atten
 
 To test, open one of the `.http` files and click the tiny "Send Request" above the examples.
 
+## Iterating
+
+While the sam thinger is running the lambda, change the .go files and then do the build step:
+
+```sh
+GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go
+```
+
+Now try the test again.
+
 ## Build and Deploy.
 
 Build and package

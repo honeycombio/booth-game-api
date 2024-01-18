@@ -6,7 +6,7 @@
 # that the person would have entered into the quiz
 # Otherwise you'll get internal server errors from our brilliant function
 
-@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}}
+@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}} 
 
 GET {{hostname}}/api/questions
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}

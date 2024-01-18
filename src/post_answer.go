@@ -12,6 +12,8 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var postAnswerEndpoint = apiEndpoint{
@@ -112,8 +114,16 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		},
 	)
 	if err != nil {
-		postQuestionSpan.RecordError(err)
-		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error dammit", StatusCode: 500}, nil
+		postQuestionSpan.RecordError(err,
+			trace.WithAttributes(
+				attribute.String("error.message", "Failure talking to OpenAI")))
+		postQuestionSpan.SetAttributes(attribute.String("error.message", "Failure talking to OpenAI"))
+		postQuestionSpan.SetStatus(codes.Error, err.Error())
+
+		return events.APIGatewayV2HTTPResponse{Body: `{ "message": "Could not reach LLM. No fallback in place", 
+		"trace.trace_id": "` + postQuestionSpan.SpanContext().TraceID().String() +
+			`", "trace.span_id":"` + postQuestionSpan.SpanContext().SpanID().String() +
+			`", "dataset": "` + HoneycombDatasetName + `" }`, StatusCode: 500}, nil
 	}
 	llmResponse := resp.Choices[0].Message.Content
 	postQuestionSpan.SetAttributes(attribute.String("app.llm.response", llmResponse))
