@@ -12,7 +12,10 @@ fi
 # docker-compose -f local-collector/docker-compose.yml up -d
 
 rm api
+echo "Building..."
 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go
 
+echo "Running lambda simulator..."
 sam local start-api --env-vars environment.json --docker-network local-collector_collector_net
 
+echo "Go to http_tests/questions.http in VSCode to click on some requests to try"
