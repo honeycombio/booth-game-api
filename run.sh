@@ -9,7 +9,7 @@ if [ ! -e "environment.json" ]; then
     exit 1
 fi
 
-docker-compose -f local-collector/docker-compose.yml up -d
+# docker-compose -f local-collector/docker-compose.yml up -d
 
 rm api
 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go

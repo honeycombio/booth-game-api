@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var postAnswerEndpoint = apiEndpoint{
@@ -59,7 +60,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
 		postQuestionSpan.RecordError(newErr)
 
-		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
+		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error :-P", StatusCode: 500}, nil
 	}
 
 	httpClient := http.Client{
@@ -70,6 +71,13 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	openAIConfig.HTTPClient = &httpClient
 
 	client := openai.NewClientWithConfig(openAIConfig)
+
+	postQuestionSpan.SetAttributes(attribute.String("app.llm.input", answer.Answer),
+		attribute.String("app.llm.full_prompt", start_system_prompt+
+			"\nYou're looking for "+prompt+
+			"\nThis is the question: "+question+
+			"\nThis is the ideal answer: "+bestanswer+
+			"This is the contestant's answer: "+answer.Answer))
 
 	resp, err := client.CreateChatCompletion(
 		currentContext,
@@ -103,10 +111,11 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 			},
 		},
 	)
-
 	if err != nil {
 		postQuestionSpan.RecordError(err)
-		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error", StatusCode: 500}, nil
+		return events.APIGatewayV2HTTPResponse{Body: "Internal Server Error dammit", StatusCode: 500}, nil
 	}
-	return events.APIGatewayV2HTTPResponse{Body: resp.Choices[0].Message.Content, StatusCode: 200}, nil
+	llmResponse := resp.Choices[0].Message.Content
+	postQuestionSpan.SetAttributes(attribute.String("app.llm.response", llmResponse))
+	return events.APIGatewayV2HTTPResponse{Body: llmResponse, StatusCode: 200}, nil
 }
