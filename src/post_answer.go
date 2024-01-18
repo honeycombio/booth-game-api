@@ -35,7 +35,7 @@ type AnswerBody struct {
 
 func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 
-	tellDeepChecksAboutIt(); // can I do this at all
+	tellDeepChecksAboutIt(currentContext) // can I do this at all
 
 	currentContext, postQuestionSpan := tracer.Start(currentContext, "Answer Question")
 	defer postQuestionSpan.End()
@@ -133,21 +133,33 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	return events.APIGatewayV2HTTPResponse{Body: llmResponse, StatusCode: 200}, nil
 }
 
-func tellDeepChecksAboutIt() {
+func tellDeepChecksAboutIt(currentContext context.Context) {
+
+	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
+	defer span.End()
+
 	url := "https://app.llm.deepchecks.com/api/v1/interactions"
 
 	payload := strings.NewReader("{\"env_type\":\"PROD\"}")
 
-	req, _ := http.NewRequest("POST", url, payload)
+	req, _ := http.NewRequestWithContext(currentContext, "POST", url, payload)
+
+	//req = req.WithContext(currentContext)
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("Authorization", "Basic amVzc2l0cm9uQGhvbmV5Y29tYi5pbw==.b3JnX2hvbmV5Y29tYl9kZXZyZWxfODMxNTY0NjVlOGI4YjlkNA==.8JiwZHT8Di7sZ4o__0WNxw")
 
-	res, _ := http.DefaultClient.Do(req)
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	res, _ := httpClient.Do(req)
+	body, _ := io.ReadAll(res.Body)
+
+	span.SetAttributes(attribute.String("response.body", string(body)))
 
 	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
 
 	fmt.Println(string(body))
 }
