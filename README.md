@@ -61,8 +61,11 @@ pulumi login
 
 Follow the prompts to login
 
+Log in to AWS somehow.
+
 Deploy
 
 ```sh
+pulumi stack select honeycomb-devrel/booth-game-api
 pulumi up
 ```
