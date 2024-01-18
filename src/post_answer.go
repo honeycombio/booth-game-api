@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/sashabaranov/go-openai"
@@ -34,8 +36,6 @@ type AnswerBody struct {
 }
 
 func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-
-	tellDeepChecksAboutIt(currentContext) // can I do this at all
 
 	currentContext, postQuestionSpan := tracer.Start(currentContext, "Answer Question")
 	defer postQuestionSpan.End()
@@ -77,13 +77,11 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	client := openai.NewClientWithConfig(openAIConfig)
 
+	full_prompt := fmt.Sprintf("%v %v", prompt, answer.Answer)
 	postQuestionSpan.SetAttributes(attribute.String("app.llm.input", answer.Answer),
-		attribute.String("app.llm.full_prompt", start_system_prompt+
-			"\nYou're looking for "+prompt+
-			"\nThis is the question: "+question+
-			"\nThis is the ideal answer: "+bestanswer+
-			"This is the contestant's answer: "+answer.Answer))
+		attribute.String("app.llm.full_prompt", full_prompt))
 
+	startTime := time.Now()
 	resp, err := client.CreateChatCompletion(
 		currentContext,
 		openai.ChatCompletionRequest{
@@ -129,20 +127,92 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 			`", "dataset": "` + HoneycombDatasetName + `" }`, StatusCode: 500}, nil
 	}
 	llmResponse := resp.Choices[0].Message.Content
-	postQuestionSpan.SetAttributes(attribute.String("app.llm.response", llmResponse))
+
+	tellDeepChecksAboutIt(currentContext, LLMInteractionDescription{
+		FullPrompt: full_prompt,
+		Input:      answer.Answer,
+		Output:     llmResponse,
+		StartedAt:  startTime,
+		FinishedAt: time.Now(),
+	})
+
+	postQuestionSpan.SetAttributes(attribute.String("app.llm.output", llmResponse))
 	return events.APIGatewayV2HTTPResponse{Body: llmResponse, StatusCode: 200}, nil
 }
 
-func tellDeepChecksAboutIt(currentContext context.Context) {
+// JESS: move this to its own file
+
+const appName = "Booth Game Quiz"
+const appVersion = "alpha"
+const envType = "PROD"
+
+// Define your data structure
+type DeepChecksInteraction struct {
+	UserInteractionID string          `json:"user_interaction_id"`
+	FullPrompt        string          `json:"full_prompt"`
+	Input             string          `json:"input"`
+	Output            string          `json:"output"`
+	AppName           string          `json:"app_name"`
+	VersionName       string          `json:"version_name"`
+	EnvType           string          `json:"env_type"`
+	RawJSONData       json.RawMessage `json:"raw_json_data"`
+	StartedAt         time.Time       `json:"started_at"`
+	FinishedAt        time.Time       `json:"finished_at"`
+}
+
+type LLMInteractionDescription struct {
+	FullPrompt string
+	Input      string
+	Output     string
+	StartedAt  time.Time
+	FinishedAt time.Time
+}
+
+func describeInteractionOnSpan(span trace.Span, interactionDescription LLMInteractionDescription) {
+	span.SetAttributes(attribute.String("app.llm.full_prompt", interactionDescription.FullPrompt),
+		attribute.String("app.llm.input", interactionDescription.Input),
+		attribute.String("app.llm.output", interactionDescription.Output),
+		attribute.String("app.llm.started_at", interactionDescription.StartedAt.String()),
+		attribute.String("app.llm.finished_at", interactionDescription.FinishedAt.String()))
+}
+
+func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) {
 
 	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
 
+	// JESS: I think we'd rather use the LLM span? but this one will do.
+	interactionId := fmt.Sprintf("%s-%s", span.SpanContext().TraceID(), span.SpanContext().SpanID())
+	span.SetAttributes(attribute.String("deepchecks.user_interaction_id", interactionId),
+		attribute.String("deepchecks.app_name", appName),
+		attribute.String("deepchecks.version_name", appVersion),
+		attribute.String("deepchecks.env_type", envType))
+	describeInteractionOnSpan(span, interactionDescription)
+
+	data := DeepChecksInteraction{
+		UserInteractionID: interactionId,
+		AppName:           appName,
+		VersionName:       appVersion,
+		EnvType:           envType,
+		FullPrompt:        interactionDescription.FullPrompt,
+		Input:             interactionDescription.Input,
+		Output:            interactionDescription.Output,
+		RawJSONData:       []byte("{}"),
+		StartedAt:         interactionDescription.StartedAt,
+		FinishedAt:        interactionDescription.FinishedAt,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		span.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON"),
+			attribute.String("error.json.input", fmt.Sprintf("%v", data))))
+		span.SetStatus(codes.Error, err.Error())
+		return
+	}
+
 	url := "https://app.llm.deepchecks.com/api/v1/interactions"
 
-	payload := strings.NewReader("{\"env_type\":\"PROD\"}")
-
-	req, _ := http.NewRequestWithContext(currentContext, "POST", url, payload)
+	req, _ := http.NewRequestWithContext(currentContext, "POST", url, bytes.NewBuffer(jsonData))
 
 	//req = req.WithContext(currentContext)
 
