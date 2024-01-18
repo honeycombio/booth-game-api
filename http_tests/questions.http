@@ -1,3 +1,11 @@
+
+# To make this work, install the VSCode extension humau:rest-client
+# then a little "Send Request" link appears above each GET and POST.
+
+# also, copy .env.example to .env and populate a Honeycomb API key
+# that the person would have entered into the quiz
+# Otherwise you'll get internal server errors from our brilliant function
+
 @AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}}
 
 GET {{hostname}}/api/questions
