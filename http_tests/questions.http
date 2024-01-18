@@ -18,5 +18,5 @@ X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
 Content-Type: application/json
 
 {
-    "answer": "it's about three pillars"
+    "answer": "The work of knowing what the heck is going on in the software at any given time"
 }

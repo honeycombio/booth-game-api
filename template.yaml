@@ -23,6 +23,7 @@ Resources:
           openai_key:
           OTEL_EXPORTER_OTLP_ENDPOINT:
           OTEL_EXPORTER_OTLP_INSECURE:
+          DEEPCHECKS_ENV_TYPE:
 
 Outputs:
   WebEndpoint:

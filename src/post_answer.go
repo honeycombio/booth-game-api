@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -144,7 +145,6 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 const appName = "Booth Game Quiz"
 const appVersion = "alpha"
-const envType = "PROD"
 
 // Define your data structure
 type DeepChecksInteraction struct {
@@ -180,6 +180,12 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 
 	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
+
+	envType := os.Getenv("DEEPCHECKS_ENV_TYPE")
+	span.SetAttributes(attribute.String("env.deepchecks_env_type", envType))
+	if envType != "EVAL" {
+		envType = "PROD"
+	}
 
 	// JESS: I think we'd rather use the LLM span? but this one will do.
 	interactionId := fmt.Sprintf("%s-%s", span.SpanContext().TraceID(), span.SpanContext().SpanID())

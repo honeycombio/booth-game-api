@@ -42,6 +42,7 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
             "openai_key": openAIKey,
             "OTEL_EXPORTER_OTLP_ENDPOINT": pulumi.interpolate`http://${collectorHostName}`,
             "OTEL_EXPORTER_OTLP_INSECURE": "true",
+            "DEEPCHECKS_ENV_TYPE": "PROD"
         }
     }
 });
