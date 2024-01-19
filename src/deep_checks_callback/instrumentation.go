@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const HoneycombDatasetName = "booth-game-backend"
+const HoneycombDatasetName = "deep-checks-callback"
 
 func createTracerProvider(currentContext context.Context) *sdktrace.TracerProvider {
 	resource, _ := resource.Merge(resource.Default(),
