@@ -14,8 +14,7 @@ docker-compose -f local-collector/docker-compose.yml up -d
 
 rm api
 echo "Building..."
-GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/api/*.go
-GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o deep_checks_callback src/deep_checks_callback/*.go
+./build.sh
 
 echo "Running lambda simulator..."
 sam local start-api --env-vars environment.json --docker-network local-collector_collector_net
