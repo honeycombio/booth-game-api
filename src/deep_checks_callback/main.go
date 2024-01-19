@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -21,7 +22,9 @@ func main() {
 
 	tracerProvider := createTracerProvider(currentContext)
 
-	tracer = tracerProvider.Tracer("booth-game-backend")
+	tracer = tracerProvider.Tracer("deep-checks-callback") // Is this even used?
+	_, span := tracer.Start(currentContext, "hello from callback")
+	span.End()
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(ApiRouter,
 			otellambda.WithFlusher(tracerProvider),
@@ -31,8 +34,18 @@ func main() {
 }
 
 func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
-	return events.APIGatewayV2HTTPResponse{
+	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
+	defer cleanup()
+
+	lambdaSpan := oteltrace.SpanFromContext(currentContext)
+	addHttpRequestAttributesToSpan(lambdaSpan, request)
+
+	response = events.APIGatewayV2HTTPResponse{
 		StatusCode: 400,
 		Body:       "Not Implemented... yet",
-	}, nil
+	}
+
+	addHttpResponseAttributesToSpan(lambdaSpan, response)
+
+	return response, nil
 }
