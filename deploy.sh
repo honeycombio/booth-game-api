@@ -1,7 +1,10 @@
 #!/bin/sh
 
 rm ../api
-GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ../api ../src/*.go
+rm ../deep_checks_callback
+GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ../api ../src/api/*.go
+GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ../deep_checks_callback ../src/deep_checks_callback/*.go
 zip -j ../api.zip ../api
+zip -j ../deep_checks_callback.zip ../deep_checks_callback
 
 pulumi up

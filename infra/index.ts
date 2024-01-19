@@ -47,6 +47,23 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
     }
 });
 
+const deepChecksLambda = new aws.lambda.Function("deepchecks-lambda", {
+    role: lambdaExecutionRole.arn,
+    runtime: aws.lambda.Go1dxRuntime,
+
+    code: new pulumi.asset.FileArchive("../deep_checks_callback.zip"),
+    handler: "deep_checks_callback",
+    timeout: 40,
+    environment: {
+        variables: {
+            "OTEL_EXPORTER_OTLP_ENDPOINT": pulumi.interpolate`http://${collectorHostName}`,
+            "OTEL_EXPORTER_OTLP_INSECURE": "true",
+            "DEEPCHECKS_ENV_TYPE": "PROD"
+        }
+    }
+});
+
+
 const integration = new aws.apigatewayv2.Integration("api-gateway-integration", {
     apiId: gateway.id,
     integrationType: "AWS_PROXY",
@@ -54,12 +71,27 @@ const integration = new aws.apigatewayv2.Integration("api-gateway-integration", 
     payloadFormatVersion: "2.0",
 });
 
+const deepchecks_integration = new aws.apigatewayv2.Integration("api-gateway-integration-deepchecks", {
+    apiId: gateway.id,
+    integrationType: "AWS_PROXY",
+    integrationUri: deepChecksLambda.arn,
+    payloadFormatVersion: "2.0",
+});
+
+
 // attach integration to route
 const route = new aws.apigatewayv2.Route("api-gateway-route", {
     apiId: gateway.id,
     routeKey: "$default",
     target: pulumi.interpolate`integrations/${integration.id}`,
 });
+
+const deepchecks_route = new aws.apigatewayv2.Route("api-gateway-route-deepchecks", {
+    apiId: gateway.id,
+    routeKey: "ANY /api/deepchecks/{proxy+}",
+    target: pulumi.interpolate`integrations/${deepchecks_integration.id}`,
+});
+
 
 // api gateway stage
 const stage = new aws.apigatewayv2.Stage("api-gateway-stage", {
@@ -71,6 +103,13 @@ const stage = new aws.apigatewayv2.Stage("api-gateway-stage", {
 var lambdaPermission = new aws.lambda.Permission("api-lambda-permission", {
     action: "lambda:InvokeFunction",
     function: apiLambda.name,
+    principal: "apigateway.amazonaws.com",
+    sourceArn: pulumi.interpolate`${gateway.executionArn}/*/*`,
+});
+
+var deepchecks_lambdaPermission = new aws.lambda.Permission("api-lambda-permission-deepchecks", {
+    action: "lambda:InvokeFunction",
+    function: deepChecksLambda.name,
     principal: "apigateway.amazonaws.com",
     sourceArn: pulumi.interpolate`${gateway.executionArn}/*/*`,
 });

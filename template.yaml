@@ -25,6 +25,27 @@ Resources:
           OTEL_EXPORTER_OTLP_INSECURE:
           DEEPCHECKS_ENV_TYPE:
 
+  CALLBACK:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Description: "Deep checks callback from analysis"
+      Handler: deep_checks_callback
+      Runtime: go1.x
+      Timeout: 10
+      Events:
+        RootResource:
+          PayloadFormatVersion: '2.0'
+          Type: HttpApi
+          Properties:
+            Path: /api/deepchecks/{proxy+}
+            Method: ANY
+      Environment:
+        Variables:
+          OTEL_EXPORTER_OTLP_ENDPOINT:
+          OTEL_EXPORTER_OTLP_INSECURE:
+          DEEPCHECKS_ENV_TYPE:
+
+
 Outputs:
   WebEndpoint:
     Description: API Gateway endpoint URL
