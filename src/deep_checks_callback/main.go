@@ -40,10 +40,7 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	addHttpRequestAttributesToSpan(lambdaSpan, request)
 
-	response = events.APIGatewayV2HTTPResponse{
-		StatusCode: 400,
-		Body:       "Not Implemented... yet",
-	}
+	response, _ = receiveEvaluation(currentContext, request)
 
 	addHttpResponseAttributesToSpan(lambdaSpan, response)
 

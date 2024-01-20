@@ -1,1 +1,6 @@
-GET {{hostname}}/api/deepchecks/asdfghasdf
+POST {{hostname}}/api/deepchecks/asdfghasdf
+Content-Type: application/json
+
+{
+    "deep_checks_says": "what was that even about"
+}
