@@ -23,8 +23,9 @@ func main() {
 	tracerProvider := createTracerProvider(currentContext)
 
 	tracer = tracerProvider.Tracer("deep-checks-callback") // Is this even used?
-	_, span := tracer.Start(currentContext, "hello from callback")
-	span.End()
+	_, span := tracer.Start(currentContext, "callback lambda runs")
+	defer span.End()
+
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(ApiRouter,
 			otellambda.WithFlusher(tracerProvider),
