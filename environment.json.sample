@@ -3,11 +3,11 @@
         "openai_key": "<key>",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
         "OTEL_EXPORTER_OTLP_INSECURE": true,
-        "DEEPCHECKS_ENV_TYPE": "EVAL"
+        "DEEPCHECKS_ENV_TYPE": "Local"
     },
     "CALLBACK": {
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
         "OTEL_EXPORTER_OTLP_INSECURE": true,
-        "DEEPCHECKS_ENV_TYPE": "EVAL"
+        "DEEPCHECKS_ENV_TYPE": "Local"
     }
 }

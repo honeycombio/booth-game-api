@@ -21,16 +21,17 @@ const appVersion = "alpha"
 
 // Define your data structure
 type DeepChecksInteraction struct {
-	UserInteractionID string          `json:"user_interaction_id"`
-	FullPrompt        string          `json:"full_prompt"`
-	Input             string          `json:"input"`
-	Output            string          `json:"output"`
-	AppName           string          `json:"app_name"`
-	VersionName       string          `json:"version_name"`
-	EnvType           string          `json:"env_type"`
-	RawJSONData       json.RawMessage `json:"raw_json_data"`
-	StartedAt         time.Time       `json:"started_at"`
-	FinishedAt        time.Time       `json:"finished_at"`
+	UserInteractionID string            `json:"user_interaction_id"`
+	FullPrompt        string            `json:"full_prompt"`
+	Input             string            `json:"input"`
+	Output            string            `json:"output"`
+	AppName           string            `json:"app_name"`
+	VersionName       string            `json:"version_name"`
+	EnvType           string            `json:"env_type"`
+	RawJSONData       json.RawMessage   `json:"raw_json_data"`
+	StartedAt         time.Time         `json:"started_at"`
+	FinishedAt        time.Time         `json:"finished_at"`
+	CustomProps       map[string]string `json:"custom_props"`
 }
 
 type LLMInteractionDescription struct {
@@ -54,32 +55,31 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
 
-	envType := os.Getenv("DEEPCHECKS_ENV_TYPE")
-	span.SetAttributes(attribute.String("env.deepchecks_env_type", envType))
-	//if envType != "EVAL" {
-	envType = "PROD"
-	//}
-	// JESS: set a custom property in deepchecks instead.
+	// JESS: rename this environment variable.
+	environment := os.Getenv("DEEPCHECKS_ENV_TYPE")
+	span.SetAttributes(attribute.String("env.deepchecks_env_type", environment))
 
 	// JESS: I think we'd rather use the LLM span? but this one will do.
 	interactionId := fmt.Sprintf("%s-%s", span.SpanContext().TraceID(), span.SpanContext().SpanID())
 	span.SetAttributes(attribute.String("deepchecks.user_interaction_id", interactionId),
 		attribute.String("deepchecks.app_name", appName),
 		attribute.String("deepchecks.version_name", appVersion),
-		attribute.String("deepchecks.env_type", envType))
+		attribute.String("deepchecks.env_type", "PROD"),
+		attribute.String("deepchecks.custom_props.environment", environment))
 	describeInteractionOnSpan(span, interactionDescription)
 
 	data := DeepChecksInteraction{
 		UserInteractionID: interactionId,
 		AppName:           appName,
 		VersionName:       appVersion,
-		EnvType:           envType,
+		EnvType:           "PROD",
 		FullPrompt:        interactionDescription.FullPrompt,
 		Input:             interactionDescription.Input,
 		Output:            interactionDescription.Output,
 		RawJSONData:       []byte("{}"),
 		StartedAt:         interactionDescription.StartedAt,
 		FinishedAt:        interactionDescription.FinishedAt,
+		CustomProps:       map[string]string{"Environment": environment},
 	}
 
 	jsonData, err := json.Marshal(data)

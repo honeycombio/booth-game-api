@@ -18,5 +18,5 @@ X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
 Content-Type: application/json
 
 {
-    "answer": "The work of knowing what the heck is going on in the software at any given time"
+    "answer": "Observability is a superset of monitoring, and is a way of thinking about systems that emphasizes the ability to understand what is happening inside a system from the outside."
 }
