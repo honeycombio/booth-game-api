@@ -11,12 +11,23 @@
 GET {{hostname}}/api/questions
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
 
-###
+### 
 
+# what is the difference btwn apm and o11y
 POST {{hostname}}/api/questions/5d946d5e-567d-4f21-aa1b-ce87280be0d4/answer
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
 Content-Type: application/json
 
 {
     "answer": "Observability is a superset of monitoring, and is a way of thinking about systems that emphasizes the ability to understand what is happening inside a system from the outside."
+}
+
+### what do you get from great o11y
+
+POST {{hostname}}/api/questions/7db42ae5-d4a7-41f1-bfc1-4fc92ad9d3ca/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+Content-Type: application/json
+
+{
+    "answer": "You get a better developer experience"
 }
