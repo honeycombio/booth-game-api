@@ -54,9 +54,21 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 	}
 
 	addHttpResponseAttributesToSpan(lambdaSpan, response)
+	addSpanAttributesToResponse(lambdaSpan, &response)
 
 	return response, err
 
+}
+
+func addSpanAttributesToResponse(lambdaSpan oteltrace.Span, response *events.APIGatewayV2HTTPResponse) {
+	// traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
+	/*
+		version
+		trace-id
+		parent-id
+		trace-flags
+	*/
+	response.Headers["x-tracechild"] = fmt.Sprintf("%s-%s-%s-%s", "00", lambdaSpan.SpanContext().TraceID().String(), lambdaSpan.SpanContext().SpanID().String(), "01")
 }
 
 var settings struct {
