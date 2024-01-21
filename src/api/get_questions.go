@@ -24,10 +24,19 @@ type QuestionsResponse struct {
 }
 
 type Question struct {
-	Id          uuid.UUID `json:"id"`
-	Question    string    `json:"question"`
-	PromptCheck string    `json:"prompt_check"`
-	BestAnswer  string    `json:"best_answer"`
+	Id                   uuid.UUID            `json:"id"`
+	Question             string               `json:"question"`
+	AnswerResponsePrompt AnswerResponsePrompt `json:"prompt"`
+}
+
+type AnswerResponsePrompt struct {
+	SystemPrompt string                         `json:"system"`
+	Examples     []AnswerResponsePromptExamples `json:"examples"`
+}
+
+type AnswerResponsePromptExamples struct {
+	ExampleAnswer   string `json:"answer"`
+	ExampleResponse string `json:"response"`
 }
 
 func getQuestions(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
