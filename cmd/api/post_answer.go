@@ -1,6 +1,7 @@
 package main
 
 import (
+	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -135,11 +136,11 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Failure talking to OpenAI"))
 		postQuestionSpan.SetStatus(codes.Error, err.Error())
 
-		// MARTIN is going to move the trace and span ID to a universal header, so we won't need this
-		return events.APIGatewayV2HTTPResponse{Body: `{ "message": "Could not reach LLM. No fallback in place", 
-		"trace.trace_id": "` + postQuestionSpan.SpanContext().TraceID().String() +
-			`", "trace.span_id":"` + postQuestionSpan.SpanContext().SpanID().String() +
-			`", "dataset": "` + HoneycombDatasetName + `" }`, StatusCode: 500}, nil
+		response := events.APIGatewayV2HTTPResponse{Body: `{ "message": "Could not reach LLM. No fallback in place" }`, StatusCode: 500}
+
+		instrumentation.InjectTraceParentToResponse(postQuestionSpan, &response)
+
+		return response, nil
 	}
 	addLlmResponseAttributesToSpan(postQuestionSpan, resp)
 	llmResponse := resp.Choices[0].Message.Content

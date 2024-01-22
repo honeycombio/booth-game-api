@@ -1,7 +1,8 @@
-package main
+package instrumentation
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.opentelemetry.io/otel"
@@ -13,12 +14,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const HoneycombDatasetName = "booth-game-backend"
-
-func createTracerProvider(currentContext context.Context) *sdktrace.TracerProvider {
+func CreateTracerProvider(currentContext context.Context, serviceName string) *sdktrace.TracerProvider {
 	resource, _ := resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
-			semconv.ServiceName(HoneycombDatasetName),
+			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion("0.0.1"),
 		))
 
@@ -26,8 +25,7 @@ func createTracerProvider(currentContext context.Context) *sdktrace.TracerProvid
 
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(httpExporter),
-		sdktrace.WithResource(resource),
-		sdktrace.WithSpanProcessor(NewHoneycombApiKeyProcessor()))
+		sdktrace.WithResource(resource))
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
@@ -38,7 +36,7 @@ func createTracerProvider(currentContext context.Context) *sdktrace.TracerProvid
 	return tracerProvider
 }
 
-func addHttpRequestAttributesToSpan(span trace.Span, request events.APIGatewayV2HTTPRequest) {
+func AddHttpRequestAttributesToSpan(span trace.Span, request events.APIGatewayV2HTTPRequest) {
 	span.SetAttributes(
 		semconv.URLPath(request.RequestContext.HTTP.Path),
 		semconv.HTTPMethod(request.RequestContext.HTTP.Method),
@@ -49,9 +47,13 @@ func addHttpRequestAttributesToSpan(span trace.Span, request events.APIGatewayV2
 	)
 }
 
-func addHttpResponseAttributesToSpan(span trace.Span, response events.APIGatewayV2HTTPResponse) {
+func AddHttpResponseAttributesToSpan(span trace.Span, response events.APIGatewayV2HTTPResponse) {
 	span.SetAttributes(
 		semconv.HTTPResponseStatusCode(int(response.StatusCode)),
 		semconv.HTTPResponseBodySize(len(response.Body)),
 	)
+}
+
+func InjectTraceParentToResponse(span trace.Span, response *events.APIGatewayV2HTTPResponse) {
+	response.Headers[`traceparent`] = fmt.Sprintf("%s-%s-%s-%s", "00", span.SpanContext().TraceID().String(), span.SpanContext().SpanID().String(), "01")
 }

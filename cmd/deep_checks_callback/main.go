@@ -1,6 +1,7 @@
 package main
 
 import (
+	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"time"
 
@@ -20,7 +21,7 @@ func main() {
 	flags.Parse(&settings)
 	currentContext := context.Background()
 
-	tracerProvider := createTracerProvider(currentContext)
+	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "deep-checks-callback")
 
 	tracer = tracerProvider.Tracer("deep-checks-callback") // Is this even used?
 	_, span := tracer.Start(currentContext, "callback lambda runs")
@@ -39,11 +40,11 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 	defer cleanup()
 
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
-	addHttpRequestAttributesToSpan(lambdaSpan, request)
+	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
 
 	response, _ = receiveEvaluation(currentContext, request)
 
-	addHttpResponseAttributesToSpan(lambdaSpan, response)
+	instrumentation.AddHttpResponseAttributesToSpan(lambdaSpan, response)
 
 	return response, nil
 }

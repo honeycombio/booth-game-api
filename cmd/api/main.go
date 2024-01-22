@@ -1,6 +1,7 @@
 package main
 
 import (
+	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"fmt"
 	"os"
@@ -38,7 +39,7 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	lambdaSpan.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
-	addHttpRequestAttributesToSpan(lambdaSpan, request)
+	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
 
 	endpoint, endpointFound := api.findEndpoint(request.RequestContext.HTTP.Method, request.RequestContext.HTTP.Path)
 
@@ -53,7 +54,7 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 		}
 	}
 
-	addHttpResponseAttributesToSpan(lambdaSpan, response)
+	instrumentation.AddHttpResponseAttributesToSpan(lambdaSpan, response)
 	addSpanAttributesToResponse(lambdaSpan, &response)
 
 	return response, err
@@ -84,9 +85,8 @@ func main() {
 	settings.OpenAIKey = os.Getenv("openai_key")
 	currentContext := context.Background()
 
-	tracerProvider := createTracerProvider(currentContext)
+	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "observaquiz-bff")
 
-	tracer = tracerProvider.Tracer("booth-game-backend")
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(ApiRouter,
 			otellambda.WithFlusher(tracerProvider),
