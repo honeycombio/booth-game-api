@@ -104,12 +104,18 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	res, _ := httpClient.Do(req)
+	res, err := httpClient.Do(req)
+
+	if err != nil {
+		span.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure talking to DeepChecks")))
+		// the world does not end
+		return
+	}
+
 	body, _ := io.ReadAll(res.Body)
+	defer res.Body.Close()
 
 	span.SetAttributes(attribute.String("response.body", string(body)))
-
-	defer res.Body.Close()
 
 	fmt.Println(string(body))
 }

@@ -68,6 +68,9 @@ func addSpanAttributesToResponse(lambdaSpan oteltrace.Span, response *events.API
 		parent-id
 		trace-flags
 	*/
+	if response.Headers == nil {
+		response.Headers = make(map[string]string)
+	}
 	response.Headers["x-tracechild"] = fmt.Sprintf("%s-%s-%s-%s", "00", lambdaSpan.SpanContext().TraceID().String(), lambdaSpan.SpanContext().SpanID().String(), "01")
 }
 
