@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/jessevdk/go-flags"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -30,19 +28,7 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	defer func() {
 		if r := recover(); r != nil {
-			lambdaSpan.SetStatus(codes.Error, "Panic caught")
-			error, ok := r.(error)
-			if ok {
-				// r is an error
-				lambdaSpan.RecordError(error)
-				fmt.Printf("%s", debug.Stack())
-				lambdaSpan.SetAttributes(attribute.String("error.stack", fmt.Sprintf("%s", debug.Stack())),
-					attribute.String("error.type", "legit (error)"))
-			} else {
-				lambdaSpan.RecordError(fmt.Errorf("%v", r))
-				lambdaSpan.SetAttributes(attribute.String("error.type", "some panic that is not (error)"))
-			}
-			response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("{ \"error\": \"Panic caught: %v\" }", r), StatusCode: 500}
+			response = RepondToPanic(lambdaSpan, r)
 		}
 	}()
 
