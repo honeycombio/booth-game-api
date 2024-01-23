@@ -14,6 +14,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+var TracerProvider *sdktrace.TracerProvider
+
 func CreateTracerProvider(currentContext context.Context, serviceName string) *sdktrace.TracerProvider {
 	resource, _ := resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
@@ -33,6 +35,7 @@ func CreateTracerProvider(currentContext context.Context, serviceName string) *s
 	))
 	otel.SetTracerProvider(tracerProvider)
 
+	TracerProvider = tracerProvider
 	return tracerProvider
 }
 
