@@ -26,8 +26,6 @@ var postAnswerEndpoint = apiEndpoint{
 	true,
 }
 
-var tracer trace.Tracer = instrumentation.TracerProvider.Tracer("app.post_answer")
-
 // const (
 // 	start_system_prompt = "You are a quizmaster, who is also an Observability evangelist, validating people's answers who gives a score between 0 and 100. You provide the output as a json object in the format { \"score\": \"{score}\", \"better_answer\": \"{an answer that would improve the score}\"}"
 // )
@@ -63,15 +61,13 @@ func constructPrompt(prompt AnswerResponsePrompt, question string, answer string
 
 func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 
+	tracer := instrumentation.TracerProvider.Tracer("app.post_answer")
 	currentContext, postQuestionSpan := tracer.Start(currentContext, "Answer Question")
 	defer postQuestionSpan.End()
 	defer func() {
 		// I haven't seen this do anything. I do see the one in main.go doing something
 		if r := recover(); r != nil {
-			postQuestionSpan.RecordError(r.(error))
-			postQuestionSpan.SetStatus(codes.Error, "Panic caught")
-			postQuestionSpan.SetAttributes(attribute.String("error.print", fmt.Sprintf("%v", r.(error).Error())))
-			response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Panic caught: %v", r), StatusCode: 500}
+			response = RepondToPanic(postQuestionSpan, r)
 		}
 	}()
 

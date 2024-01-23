@@ -1,6 +1,7 @@
 package main
 
 import (
+	"booth_game_lambda/pkg/instrumentation"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -52,7 +53,7 @@ func describeInteractionOnSpan(span trace.Span, interactionDescription LLMIntera
 
 func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) {
 
-	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
+	currentContext, span := instrumentation.TracerProvider.Tracer("deepchecks").Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
 
 	// JESS: rename this environment variable.
