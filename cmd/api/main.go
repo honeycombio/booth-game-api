@@ -25,7 +25,7 @@ const (
 
 var tracer oteltrace.Tracer
 
-func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
 	defer cleanup()
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
@@ -46,13 +46,25 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 		}
 	}
 	currentContext, err = SetApiKeyInBaggage(currentContext, attendeeApiKey)
-	if (err != nil) {
+	if err != nil {
 		lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
 		lambdaSpan.RecordError(err)
 	}
 
 	lambdaSpan.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
 	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
+
+	response, err = ApiRouter(currentContext, request)
+
+	instrumentation.AddHttpResponseAttributesToSpan(lambdaSpan, response)
+	addSpanAttributesToResponse(lambdaSpan, &response)
+
+	return response, err
+
+}
+
+func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 
 	endpoint, endpointFound := api.findEndpoint(request.RequestContext.HTTP.Method, request.RequestContext.HTTP.Path)
 
@@ -66,9 +78,6 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 			lambdaSpan.RecordError(err)
 		}
 	}
-
-	instrumentation.AddHttpResponseAttributesToSpan(lambdaSpan, response)
-	addSpanAttributesToResponse(lambdaSpan, &response)
 
 	return response, err
 
@@ -101,7 +110,7 @@ func main() {
 	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "observaquiz-bff")
 
 	lambda.StartWithOptions(
-		otellambda.InstrumentHandler(ApiRouter,
+		otellambda.InstrumentHandler(RouterWithSpan,
 			otellambda.WithFlusher(tracerProvider),
 			otellambda.WithTracerProvider(tracerProvider)),
 		lambda.WithContext(currentContext),

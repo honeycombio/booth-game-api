@@ -31,3 +31,13 @@ Content-Type: application/json
 {
     "answer": "You get a better developer experience"
 }
+
+### unfound question
+
+POST {{hostname}}/api/questions/ffaaffffaff/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+Content-Type: application/json
+
+{
+    "answer": "You get a better developer experience"
+}
