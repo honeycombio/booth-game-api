@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -33,6 +34,15 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 		if r := recover(); r != nil {
 			lambdaSpan.RecordError(r.(error))
 			lambdaSpan.SetStatus(codes.Error, "Panic caught")
+			runtimeErr, ok := r.(runtime.Error)
+			if ok {
+				// If the assertion was successful, print the stack trace from the runtimeErr
+				fmt.Println(runtimeErr.Error())
+				lambdaSpan.SetAttributes(attribute.String("error.stack", fmt.Sprintf("%v", runtimeErr.Error())))
+			} else {
+				// If the assertion was not successful, just print the error
+				fmt.Println(r)
+			}
 			lambdaSpan.SetAttributes(attribute.String("error.print", fmt.Sprintf("%v", r.(error).Error())))
 			response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Panic caught: %v", r), StatusCode: 500}
 		}
@@ -45,12 +55,11 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 			break
 		}
 	}
-	currentContext, err = SetApiKeyInBaggage(currentContext, attendeeApiKey)
-	if err != nil {
-		lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
-		lambdaSpan.RecordError(err)
-	}
-
+	// currentContext, err = SetApiKeyInBaggage(currentContext, attendeeApiKey)
+	// if err != nil {
+	// 	lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
+	// 	lambdaSpan.RecordError(err)
+	// }
 	lambdaSpan.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
 	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
 
