@@ -125,6 +125,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	client := openai.NewClientWithConfig(openAIConfig)
 
 	startTime := time.Now()
+	model := openai.GPT3Dot5Turbo1106
 	resp, err := client.CreateChatCompletion(
 		currentContext,
 		openai.ChatCompletionRequest{
@@ -132,7 +133,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 			// 	Type: openai.ChatCompletionResponseFormatTypeJSONObject,
 			// },
 			MaxTokens: 2000,
-			Model:     openai.GPT3Dot5Turbo1106,
+			Model:     model,
 			Messages:  openaiMessages,
 		},
 	)
@@ -159,6 +160,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		Output:     llmResponse,
 		StartedAt:  startTime,
 		FinishedAt: time.Now(),
+		Model:      model,
 	})
 
 	/* tell the UI what we got */

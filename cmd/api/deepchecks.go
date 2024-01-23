@@ -21,14 +21,18 @@ const appName = "Booth Game Quiz"
 const appVersion = "alpha"
 
 // Define your data structure
+type DeepChecksCreateInteractions struct {
+	AppName      string                  `json:"app_name"`
+	VersionName  string                  `json:"version_name"`
+	EnvType      string                  `json:"env_type"`
+	Interactions []DeepChecksInteraction `json:"interactions"`
+}
+
 type DeepChecksInteraction struct {
 	UserInteractionID string            `json:"user_interaction_id"`
 	FullPrompt        string            `json:"full_prompt"`
 	Input             string            `json:"input"`
 	Output            string            `json:"output"`
-	AppName           string            `json:"app_name"`
-	VersionName       string            `json:"version_name"`
-	EnvType           string            `json:"env_type"`
 	RawJSONData       json.RawMessage   `json:"raw_json_data"`
 	StartedAt         time.Time         `json:"started_at"`
 	FinishedAt        time.Time         `json:"finished_at"`
@@ -41,6 +45,7 @@ type LLMInteractionDescription struct {
 	Output     string
 	StartedAt  time.Time
 	FinishedAt time.Time
+	Model      string
 }
 
 func describeInteractionOnSpan(span trace.Span, interactionDescription LLMInteractionDescription) {
@@ -69,18 +74,23 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 		attribute.String("deepchecks.custom_props.environment", environment))
 	describeInteractionOnSpan(span, interactionDescription)
 
-	data := DeepChecksInteraction{
+	interaction := DeepChecksInteraction{
 		UserInteractionID: interactionId,
-		AppName:           appName,
-		VersionName:       appVersion,
-		EnvType:           "PROD",
-		FullPrompt:        interactionDescription.FullPrompt,
 		Input:             interactionDescription.Input,
+		FullPrompt:        interactionDescription.FullPrompt,
 		Output:            interactionDescription.Output,
-		RawJSONData:       []byte("{}"),
 		StartedAt:         interactionDescription.StartedAt,
+		RawJSONData:       []byte("{}"),
 		FinishedAt:        interactionDescription.FinishedAt,
-		CustomProps:       map[string]string{"Environment": environment},
+		CustomProps: map[string]string{"Environment": environment,
+			"Model": interactionDescription.Model},
+	}
+
+	data := DeepChecksCreateInteractions{
+		AppName:      appName,
+		VersionName:  appVersion,
+		EnvType:      "PROD",
+		Interactions: []DeepChecksInteraction{interaction},
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -92,7 +102,7 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 	}
 
 	url := "https://app.llm.deepchecks.com/api/v1/interactions"
-
+	span.SetAttributes(attribute.String("request.body", string(jsonData)))
 	req, _ := http.NewRequestWithContext(currentContext, "POST", url, bytes.NewBuffer(jsonData))
 
 	//req = req.WithContext(currentContext)
