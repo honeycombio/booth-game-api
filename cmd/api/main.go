@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -23,17 +24,24 @@ const (
 	ATTENDEE_API_KEY_ATTRIBUTE_KEY = "app.honeycomb_api_key"
 )
 
-var tracer oteltrace.Tracer
-
 func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
 	defer cleanup()
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	defer func() {
 		if r := recover(); r != nil {
-			lambdaSpan.RecordError(r.(error))
 			lambdaSpan.SetStatus(codes.Error, "Panic caught")
-			lambdaSpan.SetAttributes(attribute.String("error.print", fmt.Sprintf("%v", r.(error).Error())))
+			error, ok := r.(error)
+			if ok {
+				// r is an error
+				lambdaSpan.RecordError(error)
+				fmt.Printf("%s", debug.Stack())
+				lambdaSpan.SetAttributes(attribute.String("error.stack", fmt.Sprintf("%s", debug.Stack())),
+					attribute.String("error.type", "legit (error)"))
+			} else {
+				lambdaSpan.RecordError(fmt.Errorf("%v", r))
+				lambdaSpan.SetAttributes(attribute.String("error.type", "some panic that is not (error)"))
+			}
 			response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("{ \"error\": \"Panic caught: %v\" }", r), StatusCode: 500}
 		}
 	}()

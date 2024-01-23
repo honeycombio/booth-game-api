@@ -26,6 +26,8 @@ var postAnswerEndpoint = apiEndpoint{
 	true,
 }
 
+var tracer trace.Tracer
+
 // const (
 // 	start_system_prompt = "You are a quizmaster, who is also an Observability evangelist, validating people's answers who gives a score between 0 and 100. You provide the output as a json object in the format { \"score\": \"{score}\", \"better_answer\": \"{an answer that would improve the score}\"}"
 // )
