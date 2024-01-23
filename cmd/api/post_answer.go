@@ -59,15 +59,24 @@ func constructPrompt(prompt AnswerResponsePrompt, question string, answer string
 	return messages, fullPrompt
 }
 
-func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 
 	currentContext, postQuestionSpan := tracer.Start(currentContext, "Answer Question")
 	defer postQuestionSpan.End()
+	defer func() {
+		// I haven't seen this do anything. I do see the one in main.go doing something
+		if r := recover(); r != nil {
+			postQuestionSpan.RecordError(r.(error))
+			postQuestionSpan.SetStatus(codes.Error, "Panic caught")
+			postQuestionSpan.SetAttributes(attribute.String("error.print", fmt.Sprintf("%v", r.(error).Error())))
+			response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Panic caught: %v", r), StatusCode: 500}
+		}
+	}()
 
 	/* Parse what they sent */
 	postQuestionSpan.SetAttributes(attribute.String("request.body", request.Body))
 	answer := AnswerBody{}
-	err := json.Unmarshal([]byte(request.Body), &answer)
+	err = json.Unmarshal([]byte(request.Body), &answer)
 	if err != nil {
 		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
 		postQuestionSpan.RecordError(newErr)

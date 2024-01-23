@@ -29,12 +29,15 @@ func (processor HoneycombApiKeyProcessor) OnEnd(span trace.ReadOnlySpan)    {}
 func (processor HoneycombApiKeyProcessor) Shutdown(context.Context) error   { return nil }
 func (processor HoneycombApiKeyProcessor) ForceFlush(context.Context) error { return nil }
 
-func SetApiKeyInBaggage(ctx context.Context, apikey string) context.Context {
+func SetApiKeyInBaggage(ctx context.Context, apikey string) (context.Context, error) {
 	baggageApikeyMember, err := baggage.NewMember(APIKEY_BAGGAGE_NAME, apikey)
 	if err != nil {
-		panic(err)
+		return ctx, err
 	}
 	currentBaggage := baggage.FromContext(ctx)
-	currentBaggage, _ = currentBaggage.SetMember(baggageApikeyMember)
-	return baggage.ContextWithBaggage(ctx, currentBaggage)
+	currentBaggage, err = currentBaggage.SetMember(baggageApikeyMember)
+	if (err != nil) {
+		return ctx, err
+	}
+	return baggage.ContextWithBaggage(ctx, currentBaggage), nil
 }

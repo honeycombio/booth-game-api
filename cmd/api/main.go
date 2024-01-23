@@ -13,7 +13,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel/attribute"
-	code "go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/codes"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -32,7 +32,7 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 	defer func() {
 		if r := recover(); r != nil {
 			lambdaSpan.RecordError(r.(error))
-			lambdaSpan.SetStatus(code.Error, "Panic caught")
+			lambdaSpan.SetStatus(codes.Error, "Panic caught")
 			lambdaSpan.SetAttributes(attribute.String("error.print", fmt.Sprintf("%v", r.(error).Error())))
 			response = events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("Panic caught: %v", r), StatusCode: 500}
 		}
@@ -45,7 +45,11 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 			break
 		}
 	}
-	currentContext = SetApiKeyInBaggage(currentContext, attendeeApiKey)
+	currentContext, err = SetApiKeyInBaggage(currentContext, attendeeApiKey)
+	if (err != nil) {
+		lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
+		lambdaSpan.RecordError(err)
+	}
 
 	lambdaSpan.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
 	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
