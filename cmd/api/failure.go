@@ -10,6 +10,10 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
+func ErrorResponse(message string, statusCode int) events.APIGatewayV2HTTPResponse {
+	return events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("{ \"error\": \"%s\" }", message), StatusCode: statusCode}
+}
+
 func RepondToPanic(span oteltrace.Span, r interface{}) events.APIGatewayV2HTTPResponse {
 	span.SetStatus(codes.Error, "Panic caught")
 	error, ok := r.(error)
@@ -23,6 +27,6 @@ func RepondToPanic(span oteltrace.Span, r interface{}) events.APIGatewayV2HTTPRe
 		span.RecordError(fmt.Errorf("%v", r))
 		span.SetAttributes(attribute.String("error.type", "some panic that is not (error)"))
 	}
-	return events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("{ \"error\": \"Panic caught: %v\" }", r), StatusCode: 500}
+	return ErrorResponse(fmt.Sprintf("Panic caught: %v", r), 500)
 
 }
