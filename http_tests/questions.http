@@ -32,6 +32,16 @@ Content-Type: application/json
     "answer": "You get a better developer experience"
 }
 
+### who is o11y best for?
+
+POST {{hostname}}/api/questions/18ccbf0a-160d-4bdd-90e1-09e01258fb8d/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+Content-Type: application/json
+
+{
+    "answer": "devops teams"
+}
+
 ### unfound question
 
 POST {{hostname}}/api/questions/ffaaffffaff/answer
