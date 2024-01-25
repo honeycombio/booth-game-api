@@ -126,7 +126,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	startTime := time.Now()
 	model := openai.GPT3Dot5Turbo1106
-	resp, err := client.CreateChatCompletion(
+	openaiChatCompletionResponse, err := client.CreateChatCompletion(
 		currentContext,
 		openai.ChatCompletionRequest{
 			// ResponseFormat: &openai.ChatCompletionResponseFormat{
@@ -145,13 +145,11 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		postQuestionSpan.SetStatus(codes.Error, err.Error())
 
 		response := events.APIGatewayV2HTTPResponse{Body: `{ "message": "Could not reach LLM. No fallback in place" }`, StatusCode: 500}
-
-		instrumentation.InjectTraceParentToResponse(postQuestionSpan, &response)
-
 		return response, nil
 	}
-	addLlmResponseAttributesToSpan(postQuestionSpan, resp)
-	llmResponse := resp.Choices[0].Message.Content
+
+	addLlmResponseAttributesToSpan(postQuestionSpan, openaiChatCompletionResponse)
+	llmResponse := openaiChatCompletionResponse.Choices[0].Message.Content
 
 	/* report for analysis */
 	tellDeepChecksAboutIt(currentContext, LLMInteractionDescription{
@@ -162,10 +160,12 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		FinishedAt: time.Now(),
 		Model:      model,
 	})
+	// try to unmarshal the response as JSON and get a score and a response. Otherwise, fall back to treating it as a string and defaulting the score
+
+	parsedLlmResponse, err := parseLLMResponse(currentContext, llmResponse)
 
 	/* tell the UI what we got */
-	postQuestionSpan.SetAttributes(attribute.String("app.llm.output", llmResponse))
-	result := PostAnswerResponse{Response: llmResponse, Score: 100}
+	result := PostAnswerResponse{Response: parsedLlmResponse.Response, Score: parsedLlmResponse.Score}
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		postQuestionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
@@ -175,13 +175,35 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	return events.APIGatewayV2HTTPResponse{Body: string(jsonData), StatusCode: 200}, nil
 }
 
+type LlmResponse struct {
+	Score    int    `json:"score"`
+	Response string `json:"response"`
+	// probbaly contain scoreReason instead of setting it on the span as a side effect
+}
+
+func parseLLMResponse(currentContext context.Context, llmResponse string) (response LlmResponse, err error) {
+	span := trace.SpanFromContext(currentContext)
+	response = LlmResponse{}
+	err = json.Unmarshal([]byte(llmResponse), &response)
+	if err != nil {
+		span.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure unmarshalling JSON")))
+		span.SetAttributes(attribute.String("score.reason", "Defaulted because we couldn't parse it from the LLM response"))
+		return LlmResponse{
+			Score:    100,
+			Response: llmResponse,
+		}, err
+	}
+	span.SetAttributes(attribute.String("score.reason", "LLM"))
+	return response, nil
+}
+
 type PostAnswerResponse struct {
 	Response string `json:"response"`
 	Score    int    `json:"score"`
 }
 
 func addLlmResponseAttributesToSpan(span trace.Span, llmResponse openai.ChatCompletionResponse) {
-	span.SetAttributes(attribute.String("app.llm.response", llmResponse.Choices[0].Message.Content),
+	span.SetAttributes(attribute.String("app.llm.output", llmResponse.Choices[0].Message.Content),
 		attribute.String("app.llm.response_id", llmResponse.ID),
 		attribute.Int("app.llm.prompt_tokens", llmResponse.Usage.PromptTokens),
 		attribute.Int("app.llm.completion_tokens", llmResponse.Usage.CompletionTokens),

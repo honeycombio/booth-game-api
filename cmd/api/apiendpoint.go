@@ -32,10 +32,7 @@ func getResponseFromHandler(currentContext context.Context, endpoint apiEndpoint
 	if endpoint.requiresEvent {
 		eventName := getEventName(request)
 		if _, eventFound := eventQuestions[eventName]; !eventFound {
-			return events.APIGatewayV2HTTPResponse{
-				Body:       fmt.Sprintf("Couldn't find event name %s", eventName),
-				StatusCode: 404,
-			}, nil
+			return ErrorResponse(fmt.Sprintf("Couldn't find event name %s", eventName), 404), nil
 		}
 	}
 
