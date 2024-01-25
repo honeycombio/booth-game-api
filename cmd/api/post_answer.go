@@ -126,12 +126,12 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	startTime := time.Now()
 	model := openai.GPT3Dot5Turbo1106
-	responseType := openai.ChatCompletionResponseFormatTypeText // openai.ChatCompletionResponseFormatTypeJSONObject
+	responseType := openai.ChatCompletionResponseFormatTypeJSONObject // openai.ChatCompletionResponseFormatTypeText
 	postQuestionSpan.SetAttributes(attribute.String("app.llm.responseType", fmt.Sprintf("%v", responseType)))
 	openaiChatCompletionResponse, err := client.CreateChatCompletion(
 		currentContext,
 		openai.ChatCompletionRequest{
-			ResponseFormat: &openai.ChatCompletionResponseFormat{	
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
 				Type: responseType,
 			},
 			MaxTokens: 2000,
