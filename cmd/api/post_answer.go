@@ -106,7 +106,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	if question == "" {
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Couldn't find question"))
 		postQuestionSpan.SetStatus(codes.Error, "Couldn't find question")
-		return events.APIGatewayV2HTTPResponse{Body: "Couldn't find question with that ID", StatusCode: 404}, nil
+		return ErrorResponse("Couldn't find question with that ID", 404), nil
 	}
 	postQuestionSpan.SetAttributes(attribute.String("app.post_answer.question", question))
 
@@ -126,12 +126,14 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	startTime := time.Now()
 	model := openai.GPT3Dot5Turbo1106
+	responseType := openai.ChatCompletionResponseFormatTypeText // openai.ChatCompletionResponseFormatTypeJSONObject
+	postQuestionSpan.SetAttributes(attribute.String("app.llm.responseType", fmt.Sprintf("%v", responseType)))
 	openaiChatCompletionResponse, err := client.CreateChatCompletion(
 		currentContext,
 		openai.ChatCompletionRequest{
-			// ResponseFormat: &openai.ChatCompletionResponseFormat{
-			// 	Type: openai.ChatCompletionResponseFormatTypeJSONObject,
-			// },
+			ResponseFormat: &openai.ChatCompletionResponseFormat{	
+				Type: responseType,
+			},
 			MaxTokens: 2000,
 			Model:     model,
 			Messages:  openaiMessages,
@@ -144,7 +146,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Failure talking to OpenAI"))
 		postQuestionSpan.SetStatus(codes.Error, err.Error())
 
-		response := events.APIGatewayV2HTTPResponse{Body: `{ "message": "Could not reach LLM. No fallback in place" }`, StatusCode: 500}
+		response := ErrorResponse("Could not reach LLM. No fallback in place", 500)
 		return response, nil
 	}
 
@@ -169,7 +171,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		postQuestionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
-		return events.APIGatewayV2HTTPResponse{Body: "wtaf", StatusCode: 500}, nil
+		return ErrorResponse("wtaf", 500), nil
 	}
 
 	return events.APIGatewayV2HTTPResponse{Body: string(jsonData), StatusCode: 200}, nil
