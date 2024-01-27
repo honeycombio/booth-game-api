@@ -62,7 +62,7 @@ func constructPrompt(prompt AnswerResponsePrompt, question string, answer string
 func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 
 	tracer := instrumentation.TracerProvider.Tracer("app.post_answer")
-	currentContext, postQuestionSpan := tracer.Start(currentContext, "Answer Question")
+	currentContext, postQuestionSpan := tracer.Start(currentContext, "Ask LLM for Response")
 	defer postQuestionSpan.End()
 	defer func() {
 		// I haven't seen this do anything. I do see the one in main.go doing something
