@@ -39,7 +39,7 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 			break
 		}
 	}
-	if attendeeApiKey == "" {
+	if attendeeApiKey != "" {
 		currentContext, err = SetApiKeyInBaggage(currentContext, attendeeApiKey)
 		if err != nil {
 			lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
