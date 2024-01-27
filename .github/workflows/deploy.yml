@@ -29,7 +29,7 @@ jobs:
 
       - name: build the go src
         run: |
-          GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go && zip api.zip api
+          ./build.sh
 
         ## run npm install in the infra directory
       - name: Install dependencies
