@@ -27,7 +27,8 @@ func CreateTracerProvider(currentContext context.Context, serviceName string) *s
 
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(httpExporter),
-		sdktrace.WithResource(resource))
+		sdktrace.WithResource(resource),
+		sdktrace.WithSpanProcessor(NewHoneycombApiKeyProcessor()))
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
