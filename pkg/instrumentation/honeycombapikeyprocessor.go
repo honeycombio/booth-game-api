@@ -14,6 +14,7 @@ const (
 	APIKEY_BAGGAGE_NAME        = "boothgame.attendee_apikey"
 	EXECUTION_ID_BAGGAGE_NAME  = "app.observaquiz.execution_id"
 	EXECUTION_ID_ATTRIBUTE_KEY = "app.observaquiz.execution_id"
+	ATTENDEE_API_KEY_ATTRIBUTE_KEY = "app.honeycomb_api_key"
 )
 
 var _ trace.SpanProcessor = (*HoneycombApiKeyProcessor)(nil)
@@ -24,7 +25,7 @@ func NewHoneycombApiKeyProcessor() trace.SpanProcessor {
 
 func (processor HoneycombApiKeyProcessor) OnStart(ctx context.Context, span trace.ReadWriteSpan) {
 	apikey := baggage.FromContext(ctx).Member(APIKEY_BAGGAGE_NAME)
-	span.SetAttributes(attribute.String("app.honeycomb_api_key", apikey.Value()))
+	span.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, apikey.Value()))
 	executionId := baggage.FromContext(ctx).Member(EXECUTION_ID_BAGGAGE_NAME)
 	span.SetAttributes(attribute.String(EXECUTION_ID_ATTRIBUTE_KEY, executionId.Value()))
 }

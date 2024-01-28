@@ -10,12 +10,14 @@
 
 GET {{hostname}}/api/questions
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
 
 ### 
 
 # what is the difference btwn apm and o11y
 POST {{hostname}}/api/questions/415ac20e-bae2-4376-a91c-4a3774ec863d/answer
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
 Content-Type: application/json 
 
 {
@@ -26,6 +28,7 @@ Content-Type: application/json
 
 POST {{hostname}}/api/questions/e46ab4ba-b284-49dd-b12f-ecd2e9755767/answer
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
 Content-Type: application/json
 
 {
@@ -36,6 +39,7 @@ Content-Type: application/json
 
 POST {{hostname}}/api/questions/35b3df92-5146-4099-af21-ebcd104187e1/answer
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
 Content-Type: application/json
 
 {
@@ -46,6 +50,7 @@ Content-Type: application/json
 
 POST {{hostname}}/api/questions/ffaaffffaff/answer
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
 Content-Type: application/json
 
 {

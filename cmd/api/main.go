@@ -17,10 +17,9 @@ import (
 )
 
 const (
-	default_event                  = "devopsdays_whenever"
-	ATTENDEE_API_KEY_HEADER        = "x-honeycomb-api-key"
-	ATTENDEE_API_KEY_ATTRIBUTE_KEY = "app.honeycomb_api_key"
-	EXECUTION_ID_HEADER            = "x-observaquiz-execution-id"
+	default_event           = "devopsdays_whenever"
+	ATTENDEE_API_KEY_HEADER = "x-honeycomb-api-key"
+	EXECUTION_ID_HEADER     = "x-observaquiz-execution-id"
 )
 
 func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
@@ -49,7 +48,7 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 			lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
 			lambdaSpan.RecordError(err)
 		}
-		lambdaSpan.SetAttributes(attribute.String(ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
+		lambdaSpan.SetAttributes(attribute.String(instrumentation.ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
 		lambdaSpan.SetAttributes(attribute.String(instrumentation.EXECUTION_ID_ATTRIBUTE_KEY, executionId))
 	}
 	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
