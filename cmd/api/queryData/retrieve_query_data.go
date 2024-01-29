@@ -1,0 +1,130 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+)
+
+func main() {
+	if err := runHoneycombQueries(); err != nil {
+		fmt.Println("Error running Honeycomb queries:", err)
+	}
+}
+
+func runHoneycombQueries() error {
+	datasetSlug := "observaquiz-bff"
+	honeycombAPIKey := os.Getenv("HONEYCOMB_API_KEY") // Assuming the API key is set in environment variable
+
+	// Load JSON payload from carrot.json
+	carrotJSON, err := ioutil.ReadFile("carrot.json")
+	if err != nil {
+		return fmt.Errorf("failed to read carrot.json: %w", err)
+	}
+
+	// 1. Create query
+	queryCreateURL := fmt.Sprintf("https://api.honeycomb.io/1/queries/%s", datasetSlug)
+	queryID, err := postRequest(queryCreateURL, honeycombAPIKey, carrotJSON)
+	if err != nil {
+		return fmt.Errorf("failed to create query: %w", err)
+	}
+
+	// 2. (Optional) Fetch query definition - omitted as it's noted as boring
+
+	// 3. Execute the query
+	queryResultsURL := fmt.Sprintf("https://api.honeycomb.io/1/query_results/%s", datasetSlug)
+	executionPayload := map[string]interface{}{
+		"query_id":       queryID,
+		"disable_series": true,
+		"limit":          100,
+	}
+	executionPayloadBytes, err := json.Marshal(executionPayload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal execution payload: %w", err)
+	}
+	resultID, err := postRequest(queryResultsURL, honeycombAPIKey, executionPayloadBytes)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	// 4. Fetch query results
+	resultsURL := fmt.Sprintf("https://api.honeycomb.io/1/query_results/%s/%s", datasetSlug, resultID)
+	result, err := getRequest(resultsURL, honeycombAPIKey)
+	if err != nil {
+		return fmt.Errorf("failed to get query results: %w", err)
+	}
+
+	// Assuming you want to save the result to a file
+	if err := ioutil.WriteFile("actual_result.json", result, 0644); err != nil {
+		return fmt.Errorf("failed to write actual_result.json: %w", err)
+	}
+
+	return nil
+}
+
+func postRequest(url, apiKey string, payload []byte) (string, error) {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Honeycomb-Team", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+
+	if id, ok := result["id"].(string); ok {
+		return id, nil
+	} else {
+		return "", fmt.Errorf("no id found in response")
+	}
+}
+
+func getRequest(url, apiKey string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("X-Honeycomb-Team", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return body, nil
+}
