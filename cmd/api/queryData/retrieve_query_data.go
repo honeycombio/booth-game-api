@@ -1,7 +1,8 @@
-package main
+package queryData
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,27 +10,65 @@ import (
 	"os"
 )
 
-func main() {
-	if err := runHoneycombQueries(); err != nil {
-		fmt.Println("Error running Honeycomb queries:", err)
-	}
+type HoneycombQuery struct {
+	TimeRange    int           `json:"time_range"`
+	Granularity  int           `json:"granularity"`
+	Breakdowns   []string      `json:"breakdowns"`
+	Calculations []Calculation `json:"calculations"`
+	Filters      []Filter      `json:"filters"`
+	Orders       []Order       `json:"orders"`
+	Havings      []interface{} `json:"havings"`
+	Limit        int           `json:"limit"`
 }
 
-func runHoneycombQueries() error {
+type Filter struct {
+	Column string `json:"column"`
+	Op     string `json:"op"`
+	Value  string `json:"value"`
+}
+
+type Calculation struct {
+	Op string `json:"op"`
+}
+
+type Order struct {
+	Op    string `json:"op"`
+	Order string `json:"order"`
+}
+
+type QueryDataRequest struct {
+	QueryDefinition HoneycombQuery `json:"query"`
+}
+
+type QueryDataResponse struct {
+	QueryId    string `json:"query"`
+	ResponseId string `json:"response"`
+	Error      string `json:"error"`
+	QueryData  string `json:"query_data"`
+}
+
+func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest) (response QueryDataResponse, err error) {
 	datasetSlug := "observaquiz-bff"
 	honeycombAPIKey := os.Getenv("HONEYCOMB_API_KEY") // Assuming the API key is set in environment variable
 
-	// Load JSON payload from carrot.json
-	carrotJSON, err := ioutil.ReadFile("carrot.json")
-	if err != nil {
-		return fmt.Errorf("failed to read carrot.json: %w", err)
+	// 0. Construct the query
+	queryDefinition := request.QueryDefinition
+	newFilter := Filter{
+		Column: "app.honeycomb_api_key",
+		Op:     "=",
+		Value:  honeycombAPIKey, // No. The one they passed in, on the header. Need to get that from Main
 	}
+	// Append the new filter to the existing filters
+	queryDefinition.Filters = append(queryDefinition.Filters, newFilter)
 
 	// 1. Create query
 	queryCreateURL := fmt.Sprintf("https://api.honeycomb.io/1/queries/%s", datasetSlug)
-	queryID, err := postRequest(queryCreateURL, honeycombAPIKey, carrotJSON)
+	queryID, err := postRequest(queryCreateURL, honeycombAPIKey, queryDefinition)
 	if err != nil {
-		return fmt.Errorf("failed to create query: %w", err)
+		return QueryDataResponse{
+			QueryId: queryID,
+			Error:   err.Error(),
+		}, nil
 	}
 
 	// 2. (Optional) Fetch query definition - omitted as it's noted as boring

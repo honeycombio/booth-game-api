@@ -13,6 +13,7 @@ var api = ApiHolder{
 		getEventsEndpoint,
 		getQuestionsEndpoint,
 		postAnswerEndpoint,
+		queryDataEndpoint,
 	},
 }
 
