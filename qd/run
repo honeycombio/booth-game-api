@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -x
+set -e
+
+DATASET_SLUG=observaquiz-bff
+
+# define the query
+curl -X POST \
+"https://api.honeycomb.io/1/queries/$DATASET_SLUG" \
+  -H 'Content-Type: application/json' \
+  -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY" \
+  -d @carrot.json > query_create.json
+
+query_id=$(cat query_create.json | jq -r '.id')
+
+## This just returns that definition, boring
+curl -X GET \
+  "https://api.honeycomb.io/1/queries/$DATASET_SLUG/$query_id" \
+  -H 'Content-Type: application/json' \
+  -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY"
+
+curl -X POST \
+  "https://api.honeycomb.io/1/query_results/$DATASET_SLUG" \
+  -H 'Content-Type: application/json' \
+  -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY" \
+  -d "{
+    \"query_id\": \"$query_id\",
+    \"disable_series\": true,
+    \"limit\": 100
+  }" > run_the_query_please.json
+
+result_id=$(cat run_the_query_please.json | jq -r '.id')
+
+curl -X GET \
+  "https://api.honeycomb.io/1/query_results/$DATASET_SLUG/$result_id" \
+  -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY" > actual_result.json

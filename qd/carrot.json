@@ -1,0 +1,18 @@
+{
+  "time_range": 600,
+  "granularity": 0,
+  "breakdowns": ["name"],
+  "calculations": [
+    {
+      "op": "COUNT"
+    }
+  ],
+  "orders": [
+    {
+      "op": "COUNT",
+      "order": "descending"
+    }
+  ],
+  "havings": [],
+  "limit": 1000
+}
