@@ -1,7 +1,7 @@
 /bin/
 node_modules
 /api
-/deep_checks_callback
+/deepchecks_callback
 *.zip
 environment.json
 .env

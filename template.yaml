@@ -29,7 +29,7 @@ Resources:
     Type: AWS::Serverless::Function 
     Properties:
       Description: "Deep checks callback from analysis"
-      Handler: deep_checks_callback
+      Handler: deepchecks_callback
       Runtime: go1.x
       Timeout: 10
       Events:

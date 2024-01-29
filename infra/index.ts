@@ -51,8 +51,8 @@ const deepChecksLambda = new aws.lambda.Function("deepchecks-lambda", {
     role: lambdaExecutionRole.arn,
     runtime: aws.lambda.Go1dxRuntime,
 
-    code: new pulumi.asset.FileArchive("../deep_checks_callback.zip"),
-    handler: "deep_checks_callback",
+    code: new pulumi.asset.FileArchive("../deepchecks_callback.zip"),
+    handler: "deepchecks_callback",
     timeout: 40,
     environment: {
         variables: {
