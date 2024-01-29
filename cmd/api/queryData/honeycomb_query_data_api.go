@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"os"
 
-	oteltrace "go.opentelemetry.io/api/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -34,7 +34,7 @@ type CreateQueryResponse struct {
 }
 
 func (api HoneycombQueryDataAPI) CreateQuery(currentContext context.Context, queryDefinition HoneycombQuery, datasetSlug string) (response CreateQueryResponse, err error) {
-	span := api.Tracer.start(currentContext, "Create Honeycomb Query")
+	currentContext, span := api.Tracer.Start(currentContext, "Create Honeycomb Query")
 	defer span.End()
 
 	queryDefinitionString, err := json.Marshal(queryDefinition)

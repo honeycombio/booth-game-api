@@ -1,13 +1,7 @@
 package queryData
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"os"
 )
 
 type HoneycombQuery struct {

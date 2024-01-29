@@ -1,0 +1,74 @@
+
+# To make this work, install the VSCode extension humau:rest-client
+# then a little "Send Request" link appears above each GET and POST.
+
+# also, copy .env.example to .env and populate a Honeycomb API key
+# that the person would have entered into the quiz
+# Otherwise you'll get internal server errors from our brilliant function
+
+@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}} 
+
+POST {{hostname}}/api/queryData
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+
+{
+    "attendee_api_key": "{{AttendeeAPIKey}}",
+    "dataset_slug": "observaquiz-bff",
+    "query": {
+        "time_range": 600,
+        "granularity": 0,
+        "breakdowns": [],
+        "calculations": [
+            {
+                "op": "COUNT"
+            }
+        ],
+        "limit": 100
+    }
+}
+
+### 
+
+# what is the difference btwn apm and o11y
+POST {{hostname}}/api/questions/415ac20e-bae2-4376-a91c-4a3774ec863d/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+Content-Type: application/json 
+
+{
+    "answer": "Observability is a superset of monitoring, and is a way of thinking about systems that emphasizes the ability to understand what is happening inside a system from the outside."
+}
+
+### what do you get from great o11y
+
+POST {{hostname}}/api/questions/e46ab4ba-b284-49dd-b12f-ecd2e9755767/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+Content-Type: application/json
+
+{
+    "answer": "You get a better developer experience"
+}
+
+### who is o11y best for?
+
+POST {{hostname}}/api/questions/35b3df92-5146-4099-af21-ebcd104187e1/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+Content-Type: application/json
+
+{
+    "answer": "devops teams"
+}
+
+### unfound question
+
+POST {{hostname}}/api/questions/ffaaffffaff/answer
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+Content-Type: application/json
+
+{
+    "answer": "this doesn't work"
+}
