@@ -17,7 +17,7 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 	  -- turns out DeepChecks hasn't implemented this webhook stuff yet. So this is gonna sit.
 	*/
 
-	span.SetAttributes(attribute.String("response.body", request.Body))
+	span.SetAttributes(attribute.String("request.body", request.Body))
 
 	return events.APIGatewayV2HTTPResponse{
 		Body:       `{"wow": "such response"}`,
