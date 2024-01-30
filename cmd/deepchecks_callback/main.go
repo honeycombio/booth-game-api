@@ -21,9 +21,9 @@ func main() {
 	flags.Parse(&settings)
 	currentContext := context.Background()
 
-	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "deep-checks-callback")
+	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "deepchecks-callback")
 
-	tracer = tracerProvider.Tracer("deep-checks-callback") // Is this even used?
+	tracer = tracerProvider.Tracer("deepchecks-callback") // Is this even used?
 	_, span := tracer.Start(currentContext, "callback lambda runs")
 	defer span.End()
 
