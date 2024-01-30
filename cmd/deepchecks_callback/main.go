@@ -17,11 +17,13 @@ var tracer oteltrace.Tracer
 var settings struct {
 }
 
+const ServiceName = "deepchecks-callback"
+
 func main() {
 	flags.Parse(&settings)
 	currentContext := context.Background()
 
-	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "deepchecks-callback")
+	tracerProvider := instrumentation.CreateTracerProvider(currentContext, ServiceName)
 
 	tracer = tracerProvider.Tracer("deepchecks-callback") // Is this even used?
 	_, span := tracer.Start(currentContext, "callback lambda starts up")

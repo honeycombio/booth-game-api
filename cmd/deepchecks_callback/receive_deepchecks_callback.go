@@ -29,7 +29,7 @@ type deepchecksCallbackResponse struct {
 func linkToTraceInLocalEnvironment(traceID string, spanID string) string {
 	// the only time anybody ever looks at the response is during local testing.
 	return fmt.Sprintf("https://ui.honeycomb.io/%s/environments/%s/datasets/%s/trace?trace_id=%s&span=%s",
-		"modernity", "quiz-local", "observaquiz-bff", traceID, spanID)
+		"modernity", "quiz-local", ServiceName, traceID, spanID)
 }
 
 func callbackReceivedResponse(currentContext context.Context, msg string, link string) events.APIGatewayV2HTTPResponse {
@@ -49,6 +49,7 @@ func callbackReceivedResponse(currentContext context.Context, msg string, link s
 
 func receiveEvaluation(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	currentContext, span := tracer.Start(currentContext, "Receive Evaluation")
+	defer span.End()
 	defer func() {
 		if r := recover(); r != nil {
 			response = instrumentation.RespondToPanic(span, r)
@@ -101,13 +102,18 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		}))
 
 	tracer := otel.Tracer("my-tracer")
-	_, spanBecauseLogIsntImplemented := tracer.Start(contextToPutALogIn, "LLM Evaluation Results")
+	contextOfLog, spanBecauseLogIsntImplemented := tracer.Start(contextToPutALogIn, "LLM Evaluation Results")
 	// TODO: start the span at the time deepchecks created the interaction - show how long evaluation took.
 	spanBecauseLogIsntImplemented.SetAttributes(attribute.String("app.deepChecks.user_interaction_id", callbackContent.UserInteractionId),
 		attribute.String("app.deepChecks.full_report", request.Body))
 	spanBecauseLogIsntImplemented.End() // this should send it
 
-	span.AddEvent("my-log-message")
+	createSpanLink(currentContext, contextOfLog)
 
 	return callbackReceivedResponse(currentContext, "Hey, it worked!", linkToTraceInLocalEnvironment(traceID, spanID)), nil
+}
+
+func createSpanLink(currentContext context.Context, spanContext context.Context) {
+	_, spanThatOnlyExistsBecauseWeCantAddLinks := tracer.Start(currentContext, "Link to created span", oteltrace.WithLinks(oteltrace.LinkFromContext(spanContext)))
+	spanThatOnlyExistsBecauseWeCantAddLinks.End()
 }

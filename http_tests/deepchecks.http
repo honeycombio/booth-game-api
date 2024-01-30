@@ -2,7 +2,7 @@ POST {{hostname}}/api/deepchecks/asdfghasdf
 Content-Type: application/json
 
 {
-  "user_interaction_id": "b30616f4f21dc6daaeada9bf1cf908de-5262a6d9c7f5ad9c",
+  "user_interaction_id": "b4687bb4f4ac29b9c287f808eb8ede4d-28248d827be9f16d",
   "application_version_id": 1,
   "input": {
     "id": "875d78f1-ccd0-2da0-46e5-e2fa5c754714",
