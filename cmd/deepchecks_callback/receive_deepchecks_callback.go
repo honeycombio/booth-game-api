@@ -47,14 +47,18 @@ func callbackReceivedResponse(currentContext context.Context, msg string, link s
 		StatusCode: 200}
 }
 
-func receiveEvaluation(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-
-	span := oteltrace.SpanFromContext(currentContext)
+func receiveEvaluation(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+	currentContext, span := tracer.Start(currentContext, "Receive Evaluation")
+	defer func() {
+		if r := recover(); r != nil {
+			response = instrumentation.RespondToPanic(span, r)
+		}
+	}()
 
 	span.SetAttributes(attribute.String("request.body", request.Body))
 
 	callbackContent := deepchecksCallbackContent{}
-	err := json.Unmarshal([]byte(request.Body), &callbackContent)
+	err = json.Unmarshal([]byte(request.Body), &callbackContent)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Error unmarshalling request body")
