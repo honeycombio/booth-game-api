@@ -27,7 +27,7 @@ func fetchQueryData(currentContext context.Context, request events.APIGatewayV2H
 	defer queryDataSpan.End()
 	defer func() {
 		if r := recover(); r != nil {
-			response = RepondToPanic(queryDataSpan, r)
+			response = instrumentation.RespondToPanic(queryDataSpan, r)
 		}
 	}()
 
@@ -38,7 +38,7 @@ func fetchQueryData(currentContext context.Context, request events.APIGatewayV2H
 	if err != nil {
 		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
 		queryDataSpan.RecordError(newErr)
-		return ErrorResponse("Bad request. Expected format: { 'query': 'query as a string of escaped json' }", 400), nil
+		return instrumentation.ErrorResponse("Bad request. Expected format: { 'query': 'query as a string of escaped json' }", 400), nil
 	}
 
 	questionResponse, err := queryData.RunHoneycombQuery(currentContext, queryRequest)

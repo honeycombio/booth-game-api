@@ -28,7 +28,7 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	defer func() {
 		if r := recover(); r != nil {
-			response = RepondToPanic(lambdaSpan, r)
+			response = instrumentation.RespondToPanic(lambdaSpan, r)
 		}
 	}()
 

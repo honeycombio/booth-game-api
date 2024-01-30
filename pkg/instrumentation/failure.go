@@ -1,4 +1,4 @@
-package main
+package instrumentation
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func ErrorResponse(message string, statusCode int) events.APIGatewayV2HTTPRespon
 	return events.APIGatewayV2HTTPResponse{Body: fmt.Sprintf("{ \"error\": \"%s\" }", message), StatusCode: statusCode}
 }
 
-func RepondToPanic(span oteltrace.Span, r interface{}) events.APIGatewayV2HTTPResponse {
+func RespondToPanic(span oteltrace.Span, r interface{}) events.APIGatewayV2HTTPResponse {
 	span.SetStatus(codes.Error, "Panic caught")
 	error, ok := r.(error)
 	if ok {

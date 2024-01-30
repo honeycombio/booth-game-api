@@ -1,6 +1,7 @@
 package main
 
 import (
+	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"fmt"
 	"regexp"
@@ -33,7 +34,7 @@ func getResponseFromHandler(currentContext context.Context, endpoint apiEndpoint
 	if endpoint.requiresEvent {
 		eventName := getEventName(request)
 		if _, eventFound := eventQuestions[eventName]; !eventFound {
-			return ErrorResponse(fmt.Sprintf("Couldn't find event name %s", eventName), 404), nil
+			return instrumentation.ErrorResponse(fmt.Sprintf("Couldn't find event name %s", eventName), 404), nil
 		}
 	}
 

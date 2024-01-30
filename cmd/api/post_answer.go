@@ -67,7 +67,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	defer func() {
 		// I haven't seen this do anything. I do see the one in main.go doing something
 		if r := recover(); r != nil {
-			response = RepondToPanic(postQuestionSpan, r)
+			response = instrumentation.RespondToPanic(postQuestionSpan, r)
 		}
 	}()
 
@@ -106,7 +106,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	if question == "" {
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Couldn't find question"))
 		postQuestionSpan.SetStatus(codes.Error, "Couldn't find question")
-		return ErrorResponse("Couldn't find question with that ID", 404), nil
+		return instrumentation.ErrorResponse("Couldn't find question with that ID", 404), nil
 	}
 	postQuestionSpan.SetAttributes(attribute.String("app.post_answer.question", question))
 
@@ -146,7 +146,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Failure talking to OpenAI"))
 		postQuestionSpan.SetStatus(codes.Error, err.Error())
 
-		response := ErrorResponse("Could not reach LLM. No fallback in place", 500)
+		response := instrumentation.ErrorResponse("Could not reach LLM. No fallback in place", 500)
 		return response, nil
 	}
 
@@ -171,7 +171,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		postQuestionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
-		return ErrorResponse("wtaf", 500), nil
+		return instrumentation.ErrorResponse("wtaf", 500), nil
 	}
 
 	return events.APIGatewayV2HTTPResponse{Body: string(jsonData), StatusCode: 200}, nil
