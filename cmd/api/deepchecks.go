@@ -15,7 +15,10 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
+
+const FeatureFlag_SendToDeepchecks = true
 
 const appName = "Booth Game Quiz"
 const appVersion = "alpha"
@@ -57,6 +60,10 @@ func describeInteractionOnSpan(span trace.Span, interactionDescription LLMIntera
 }
 
 func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) {
+	oteltrace.SpanFromContext(currentContext).SetAttributes(attribute.Bool("app.feature_flag.send_to_deepchecks", FeatureFlag_SendToDeepchecks))
+	if !FeatureFlag_SendToDeepchecks {
+		return
+	}
 
 	currentContext, span := instrumentation.TracerProvider.Tracer("deepchecks").Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
