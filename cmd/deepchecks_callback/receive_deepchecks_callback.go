@@ -76,10 +76,16 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		return callbackReceivedResponse(currentContext, "Failed to create result span: "+err.Error()), nil
 	}
 	defer spanRecordingResults.End()
-	spanRecordingResults.SetAttributes(attribute.String("app.deepChecks.user_interaction_id", callbackContent.UserInteractionId),
-		attribute.String("app.deepChecks.full_report", request.Body))
+	spanRecordingResults.SetAttributes(attribute.String("app.deepChecks.full_report", request.Body))
 
 	// Add all the rest
+	err = SetSpanAttributesFromJSONString(spanRecordingResults, "app.deepChecks", request.Body)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return callbackReceivedResponse(currentContext, "Failed to get all the attributes: "+err.Error()), nil
+	}
+
 	spanRecordingResults.End() // this should send it
 	return callbackReceivedResponse(currentContext, "Hey, it worked!"), nil
 }

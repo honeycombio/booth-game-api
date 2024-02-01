@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 // Function to set attributes on a span from a JSON object
-func setSpanAttributesFromJSON(span trace.Span, keyPrefix string, jsonObj interface{}) {
+func setSpanAttributesFromJSON(span trace.Span, keyPrefix string, jsonObj interface{}) error {
 	switch jsonObj := jsonObj.(type) {
 	case map[string]interface{}:
 		for key, val := range jsonObj {
@@ -42,20 +43,12 @@ func setSpanAttributesFromJSON(span trace.Span, keyPrefix string, jsonObj interf
 		// Handle bool specifically if needed
 		span.SetAttributes(attribute.Bool(keyPrefix, jsonObj))
 	default:
-		fmt.Println("Unhandled type:", keyPrefix, jsonObj)
+		return errors.New("Unhandled type: " + keyPrefix + " " + fmt.Sprintf("%v", jsonObj))
 	}
+	return nil
 }
 
-func main() {
-	// Example JSON
-	jsonData := `{
-		"stuff": "things",
-		"more": {
-			"dingleberries": 42,
-			"when": "2024-01-30T14:29:16.261245+00:00"
-		},
-		"topic": null
-	}`
+func SetSpanAttributesFromJSONString(span trace.Span, keyPrefix string, jsonData string) error {
 
 	// Unmarshal JSON into an interface{}
 	var jsonObj interface{}
@@ -63,11 +56,6 @@ func main() {
 		panic(err)
 	}
 
-	// Assume `span` is an existing OpenTelemetry span
-	var span trace.Span // Placeholder for an actual span
-
 	// Set attributes on the span from the JSON object
-	setSpanAttributesFromJSON(span, "", jsonObj)
-
-	// Your span processing logic here...
+	return setSpanAttributesFromJSON(span, keyPrefix, jsonObj)
 }
