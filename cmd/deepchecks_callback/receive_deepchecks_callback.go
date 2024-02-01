@@ -65,7 +65,7 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		// OK they sent us some garbage
 		return instrumentation.ErrorResponse("Error unmarshalling request body: "+err.Error(), 400), nil
 	}
-	span.SetAttributes(attribute.String("app.deepChecks.user_interaction_id", callbackContent.UserInteractionId))
+	span.SetAttributes(attribute.String("app.deepchecks.user_interaction_id", callbackContent.UserInteractionId))
 
 	// TODO: start the span at the time deepchecks created the interaction - show how long evaluation took.
 	spanRecordingResults, err := startSpanToRecordResults(currentContext, callbackContent.UserInteractionId)
@@ -76,10 +76,10 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		return callbackReceivedResponse(currentContext, "Failed to create result span: "+err.Error()), nil
 	}
 	defer spanRecordingResults.End()
-	spanRecordingResults.SetAttributes(attribute.String("app.deepChecks.full_report", request.Body))
+	spanRecordingResults.SetAttributes(attribute.String("app.deepchecks.full_report", request.Body))
 
 	// Add all the rest
-	err = SetSpanAttributesFromJSONString(spanRecordingResults, "app.deepChecks", request.Body)
+	err = SetSpanAttributesFromJSONString(spanRecordingResults, "app.deepchecks", request.Body)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -106,8 +106,8 @@ func startSpanToRecordResults(currentContext context.Context, userInteractionId 
 	}
 	traceID := parts[0]
 	spanID := parts[1]
-	span.SetAttributes(attribute.String("app.deepChecks.trace_id", traceID),
-		attribute.String("app.deepChecks.span_id", spanID))
+	span.SetAttributes(attribute.String("app.deepchecks.trace_id", traceID),
+		attribute.String("app.deepchecks.span_id", spanID))
 	traceIDfromHex, err := oteltrace.TraceIDFromHex(traceID)
 	if err != nil {
 		msg := "could not construct Trace ID from hex"
