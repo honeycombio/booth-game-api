@@ -20,7 +20,10 @@ const (
 	default_event           = "devopsdays_whenever"
 	ATTENDEE_API_KEY_HEADER = "x-honeycomb-api-key"
 	EXECUTION_ID_HEADER     = "x-observaquiz-execution-id"
+	ServiceName             = "observaquiz-bff"
 )
+
+const LocalTraceLink = true // feature flag, enable locally and turn off in prod ideally
 
 func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
@@ -56,7 +59,7 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 	response, err = ApiRouter(currentContext, request)
 
 	instrumentation.AddHttpResponseAttributesToSpan(lambdaSpan, response)
-	addSpanAttributesToResponse(lambdaSpan, &response)
+	addSpanAttributesToResponse(currentContext, &response)
 
 	return response, err
 
@@ -82,7 +85,7 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 
 }
 
-func addSpanAttributesToResponse(lambdaSpan oteltrace.Span, response *events.APIGatewayV2HTTPResponse) {
+func addSpanAttributesToResponse(currentContext context.Context, response *events.APIGatewayV2HTTPResponse) {
 	// traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
 	/*
 		version
@@ -90,10 +93,14 @@ func addSpanAttributesToResponse(lambdaSpan oteltrace.Span, response *events.API
 		parent-id
 		trace-flags
 	*/
+	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	if response.Headers == nil {
 		response.Headers = make(map[string]string)
 	}
 	response.Headers["x-tracechild"] = fmt.Sprintf("%s-%s-%s-%s", "00", lambdaSpan.SpanContext().TraceID().String(), lambdaSpan.SpanContext().SpanID().String(), "01")
+	if LocalTraceLink {
+		response.Headers["x-local-trace-link"] = instrumentation.LinkToTraceInLocalEnvironment(currentContext, ServiceName)
+	}
 }
 
 var settings struct {
@@ -106,7 +113,7 @@ func main() {
 	settings.OpenAIKey = os.Getenv("openai_key")
 	currentContext := context.Background()
 
-	tracerProvider := instrumentation.CreateTracerProvider(currentContext, "observaquiz-bff")
+	tracerProvider := instrumentation.CreateTracerProvider(currentContext, ServiceName)
 
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(RouterWithSpan,
