@@ -32,12 +32,11 @@ func linkToTraceInLocalEnvironment(traceID string, spanID string) string {
 		"modernity", "quiz-local", ServiceName, traceID, spanID)
 }
 
-func callbackReceivedResponse(currentContext context.Context, msg string, link string) events.APIGatewayV2HTTPResponse {
+func callbackReceivedResponse(currentContext context.Context, msg string) events.APIGatewayV2HTTPResponse {
 	span := oteltrace.SpanFromContext(currentContext)
 	response := deepchecksCallbackResponse{
 		Wow:               "such response",
 		Message:           msg,
-		CreatedSpan:       link,
 		ThisExecutionSpan: linkToTraceInLocalEnvironment(span.SpanContext().TraceID().String(), span.SpanContext().TraceID().String()),
 	}
 	json, _ := json.Marshal(response)
@@ -68,12 +67,37 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 	}
 	span.SetAttributes(attribute.String("app.deepChecks.user_interaction_id", callbackContent.UserInteractionId))
 
-	parts := strings.Split(callbackContent.UserInteractionId, "-")
+	// TODO: start the span at the time deepchecks created the interaction - show how long evaluation took.
+	spanRecordingResults, err := startSpanToRecordResults(currentContext, callbackContent.UserInteractionId)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		// this wasn't their fault, so respond 200
+		return callbackReceivedResponse(currentContext, "Failed to create result span: "+err.Error()), nil
+	}
+	defer spanRecordingResults.End()
+	spanRecordingResults.SetAttributes(attribute.String("app.deepChecks.user_interaction_id", callbackContent.UserInteractionId),
+		attribute.String("app.deepChecks.full_report", request.Body))
+
+	// Add all the rest
+
+	spanRecordingResults.End() // this should send it
+	return callbackReceivedResponse(currentContext, "Hey, it worked!"), nil
+}
+
+func createSpanLink(currentContext context.Context, spanContext context.Context) {
+	_, spanThatOnlyExistsBecauseWeCantAddLinks := tracer.Start(currentContext, "Link to created span", oteltrace.WithLinks(oteltrace.LinkFromContext(spanContext)))
+	spanThatOnlyExistsBecauseWeCantAddLinks.End()
+}
+
+func startSpanToRecordResults(currentContext context.Context, userInteractionId string) (spanRecordingResults oteltrace.Span, err error) {
+	span := oteltrace.SpanFromContext(currentContext)
+	parts := strings.Split(userInteractionId, "-")
 	if len(parts) != 2 {
 		span.RecordError(errors.New("user_interaction_id is not in the expected format"))
 		span.SetStatus(codes.Error, "user_interaction_id is not in the expected format")
 		// our fault not theirs
-		return callbackReceivedResponse(currentContext, "user_interaction_id is not in the expected format", ""), nil
+		return nil, errors.New("user_interaction_id is not in the expected format")
 	}
 	traceID := parts[0]
 	spanID := parts[1]
@@ -84,14 +108,14 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		msg := "could not construct Trace ID from hex"
 		span.RecordError(errors.New(msg))
 		span.SetStatus(codes.Error, msg)
-		return callbackReceivedResponse(currentContext, msg, ""), nil
+		return nil, errors.New(msg)
 	}
 	spanIDfromHex, err := oteltrace.SpanIDFromHex(spanID)
 	if err != nil {
 		msg := "could not construct Span ID from hex"
 		span.RecordError(errors.New(msg))
 		span.SetStatus(codes.Error, msg)
-		return callbackReceivedResponse(currentContext, msg, ""), nil
+		return nil, errors.New(msg)
 	}
 
 	contextToPutALogIn := oteltrace.ContextWithSpanContext(context.Background(), oteltrace.NewSpanContext(
@@ -102,18 +126,9 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		}))
 
 	tracer := otel.Tracer("my-tracer")
-	contextOfLog, spanBecauseLogIsntImplemented := tracer.Start(contextToPutALogIn, "LLM Evaluation Results")
-	// TODO: start the span at the time deepchecks created the interaction - show how long evaluation took.
-	spanBecauseLogIsntImplemented.SetAttributes(attribute.String("app.deepChecks.user_interaction_id", callbackContent.UserInteractionId),
-		attribute.String("app.deepChecks.full_report", request.Body))
-	spanBecauseLogIsntImplemented.End() // this should send it
+	contextOfLog, spanRecordingResults := tracer.Start(contextToPutALogIn, "LLM Evaluation Results")
 
 	createSpanLink(currentContext, contextOfLog)
 
-	return callbackReceivedResponse(currentContext, "Hey, it worked!", linkToTraceInLocalEnvironment(traceID, spanID)), nil
-}
-
-func createSpanLink(currentContext context.Context, spanContext context.Context) {
-	_, spanThatOnlyExistsBecauseWeCantAddLinks := tracer.Start(currentContext, "Link to created span", oteltrace.WithLinks(oteltrace.LinkFromContext(spanContext)))
-	spanThatOnlyExistsBecauseWeCantAddLinks.End()
+	return spanRecordingResults, nil
 }
