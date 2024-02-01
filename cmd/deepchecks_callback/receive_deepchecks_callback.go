@@ -80,7 +80,6 @@ func receiveEvaluation(currentContext context.Context, request events.APIGateway
 		attribute.String("app.deepChecks.full_report", request.Body))
 
 	// Add all the rest
-
 	spanRecordingResults.End() // this should send it
 	return callbackReceivedResponse(currentContext, "Hey, it worked!"), nil
 }
