@@ -61,3 +61,10 @@ func AddHttpResponseAttributesToSpan(span trace.Span, response events.APIGateway
 func InjectTraceParentToResponse(span trace.Span, response *events.APIGatewayV2HTTPResponse) {
 	response.Headers[`traceparent`] = fmt.Sprintf("%s-%s-%s-%s", "00", span.SpanContext().TraceID().String(), span.SpanContext().SpanID().String(), "01")
 }
+
+func LinkToTraceInLocalEnvironment(currentContext context.Context, serviceName string) string {
+	span := trace.SpanFromContext(currentContext)
+	// the only time anybody ever looks at the response is during local testing.
+	return fmt.Sprintf("https://ui.honeycomb.io/%s/environments/%s/datasets/%s/trace?trace_id=%s&span=%s",
+		"modernity", "quiz-local", serviceName, span.SpanContext().TraceID().String(), span.SpanContext().TraceID().String())
+}

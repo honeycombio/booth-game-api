@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -26,18 +25,11 @@ type deepchecksCallbackResponse struct {
 	ThisExecutionSpan string `json:"span_describing_this_execution"`
 }
 
-func linkToTraceInLocalEnvironment(traceID string, spanID string) string {
-	// the only time anybody ever looks at the response is during local testing.
-	return fmt.Sprintf("https://ui.honeycomb.io/%s/environments/%s/datasets/%s/trace?trace_id=%s&span=%s",
-		"modernity", "quiz-local", ServiceName, traceID, spanID)
-}
-
 func callbackReceivedResponse(currentContext context.Context, msg string) events.APIGatewayV2HTTPResponse {
-	span := oteltrace.SpanFromContext(currentContext)
 	response := deepchecksCallbackResponse{
 		Wow:               "such response",
 		Message:           msg,
-		ThisExecutionSpan: linkToTraceInLocalEnvironment(span.SpanContext().TraceID().String(), span.SpanContext().TraceID().String()),
+		ThisExecutionSpan: instrumentation.LinkToTraceInLocalEnvironment(currentContext, ServiceName),
 	}
 	json, _ := json.Marshal(response)
 	return events.APIGatewayV2HTTPResponse{
