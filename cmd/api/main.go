@@ -104,7 +104,7 @@ func addSpanAttributesToResponse(currentContext context.Context, response *event
 }
 
 var settings struct {
-	OpenAIKey string `env:"openai_key"`
+	OpenAIKey       string `env:"openai_key"`
 	QueryDataApiKey string `env:"query_data_api_key"`
 }
 
@@ -112,6 +112,7 @@ func main() {
 	flags.Parse(&settings)
 	// print all the environment variables to the console
 	settings.OpenAIKey = os.Getenv("openai_key")
+	settings.QueryDataApiKey = os.Getenv("query_data_api_key") // whatever, if it works
 	currentContext := context.Background()
 
 	tracerProvider := instrumentation.CreateTracerProvider(currentContext, ServiceName)

@@ -4,10 +4,6 @@ import (
 	"context"
 )
 
-var settings struct {
-	QueryDataApiKey string `env:"query_data_api_key"`
-}
-
 type HoneycombQuery struct {
 	TimeRange    int           `json:"time_range"`
 	Granularity  int           `json:"granularity"`
@@ -51,7 +47,7 @@ func errorQueryDataResponse(err error) (QueryDataResponse, error) {
 	return QueryDataResponse{Error: err.Error()}, err
 }
 
-func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest) (response QueryDataResponse, err error) {
+func RunHoneycombQuery(currentContext context.Context, queryDataApiKey string, request QueryDataRequest) (response QueryDataResponse, err error) {
 
 	// 0. Construct the query
 	queryDefinition := request.QueryDefinition
@@ -63,7 +59,7 @@ func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest)
 	// Make sure they only ever see their own data.
 	queryDefinition.Filters = append(queryDefinition.Filters, newFilter)
 
-	hnyApi := productionQueryDataAPI(settings.QueryDataApiKey)
+	hnyApi := productionQueryDataAPI(queryDataApiKey)
 	// 1. Create query
 	createQueryResponse, err := hnyApi.CreateQuery(currentContext, queryDefinition, request.DatasetSlug)
 	if err != nil {

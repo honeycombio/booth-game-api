@@ -32,7 +32,7 @@ func fetchQueryData(currentContext context.Context, request events.APIGatewayV2H
 	}()
 
 	/* Parse what they sent */
-	queryDataSpan.SetAttributes(attribute.String("request.body", request.Body))
+	queryDataSpan.SetAttributes(attribute.String("request.body", request.Body), attribute.Bool("app.query_data_apikey_populated", settings.QueryDataApiKey != ""))
 	queryRequest := queryData.QueryDataRequest{}
 	err = json.Unmarshal([]byte(request.Body), &queryRequest)
 	if err != nil {
@@ -41,7 +41,7 @@ func fetchQueryData(currentContext context.Context, request events.APIGatewayV2H
 		return instrumentation.ErrorResponse("Bad request. Expected format: { 'query': 'query as a string of escaped json' }", 400), nil
 	}
 
-	questionResponse, err := queryData.RunHoneycombQuery(currentContext, queryRequest)
+	questionResponse, err := queryData.RunHoneycombQuery(currentContext, settings.QueryDataApiKey, queryRequest)
 
 	questionsJson, err := json.Marshal(questionResponse)
 	if err != nil {
