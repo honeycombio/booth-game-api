@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -198,8 +199,30 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 
 	// TODO: the thing
 	// 1. Poll the result URL until it's done
+	bodyBytes, err := api.postToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Error fetching query results")
+		return response, err
+	}
 
 	// 2. Get the data
+	queryResult := getQueryResultResponse{}
+	err = json.Unmarshal(bodyBytes, &queryResult)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Error unmarshalling response")
+		return response, err
+	}
+
+	if !queryResult.Complete {
+		// TODO: wait a bit and poll again, unless a timeout has passed
+		err = errors.New("Query not complete")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Query not complete")
+		return response, err
+	}
+
 	// 3. Return it
 
 	response = honeycombQueryData{
