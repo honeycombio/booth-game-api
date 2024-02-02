@@ -2,10 +2,14 @@ package queryData
 
 import (
 	"booth_game_lambda/pkg/instrumentation"
+	"bytes"
 	"context"
 	"encoding/json"
-	"os"
+	"errors"
+	"io"
+	"net/http"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -21,16 +25,56 @@ type honeycombQueryDataAPI struct {
 	Tracer             oteltrace.Tracer
 }
 
-func ProductionQueryDataAPI() honeycombQueryDataAPI {
+func productionQueryDataAPI(apikey string) honeycombQueryDataAPI {
 	return honeycombQueryDataAPI{
-		OurHoneycombAPIKey: os.Getenv("HONEYCOMB_API_KEY"),
-		HoneycombApiUrl:    "https://api.honeycomb.io/",
+		OurHoneycombAPIKey: apikey,
+		HoneycombApiUrl:    "https://api.honeycomb.io/1", // our DevRel team is in US region.
 		Tracer:             instrumentation.TracerProvider.Tracer("app.honeycomb_query_data_api"),
 	}
 }
 
 type DefineQueryResponse struct {
 	QueryId string `json:"query"`
+}
+
+func (api honeycombQueryDataAPI) postToHoneycomb(currentContext context.Context, relativeUrl string, payload []byte) (response []byte, err error) {
+	span := oteltrace.SpanFromContext(currentContext)
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+	url := api.HoneycombApiUrl + relativeUrl
+	req, _ := http.NewRequestWithContext(currentContext, "POST", url, bytes.NewBuffer(payload))
+
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("x-honeycomb-team", api.OurHoneycombAPIKey)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+	span.SetAttributes(attribute.Int("app.response.status", resp.StatusCode))
+	if resp.StatusCode != 200 {
+		err = errors.New("Honeycomb API returned " + resp.Status)
+		return nil, err
+	}
+
+	// Read the body
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	span.SetAttributes(attribute.String("app.response.body", string(bodyBytes)))
+
+	return bodyBytes, nil
+}
+
+type honeycombCreateQueryResponse struct {
+	QueryId string `json:"id"`
 }
 
 func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, queryDefinition HoneycombQuery, datasetSlug string) (response DefineQueryResponse, err error) {
@@ -46,7 +90,20 @@ func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, que
 	span.SetAttributes(attribute.String("app.request.payload", string(queryDefinitionString)),
 		attribute.String("app.request.datasetSlug", datasetSlug))
 
-	queryId := "hardcoded to 1234"
+	bodyBytes, err := api.postToHoneycomb(currentContext, "/queries/"+datasetSlug, queryDefinitionString)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Error creating query")
+		return response, err
+	}
+	output := honeycombCreateQueryResponse{}
+	err = json.Unmarshal(bodyBytes, &output)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Error unmarshalling response")
+		return response, err
+	}
+	queryId := output.QueryId
 
 	span.SetAttributes(attribute.String("app.response.query_id", queryId))
 	response = DefineQueryResponse{
