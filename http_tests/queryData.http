@@ -14,7 +14,7 @@ X-Observaquiz-Execution-Id: 1234
 
 {
     "attendee_api_key": "{{AttendeeAPIKey}}",
-    "dataset_slug": "observaquiz-bff",
+    "dataset_slug": "query",
     "query": {
         "time_range": 600,
         "granularity": 0,

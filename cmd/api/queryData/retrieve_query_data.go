@@ -37,10 +37,14 @@ type QueryDataRequest struct {
 }
 
 type QueryDataResponse struct {
-	QueryId    string `json:"query"`
-	ResponseId string `json:"response"`
-	Error      string `json:"error"`
-	QueryData  string `json:"query_data"`
+	QueryId   string `json:"query_id"`
+	ResultId  string `json:"result_id"`
+	Error     string `json:"error"`
+	QueryData string `json:"query_data"`
+}
+
+func errorQueryDataResponse(err error) (QueryDataResponse, error) {
+	return QueryDataResponse{Error: err.Error()}, err
 }
 
 func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest) (response QueryDataResponse, err error) {
@@ -58,9 +62,19 @@ func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest)
 	hnyApi := ProductionQueryDataAPI()
 	// 1. Create query
 	createQueryResponse, err := hnyApi.CreateQuery(currentContext, queryDefinition, request.DatasetSlug)
-	
+	if err != nil {
+		return errorQueryDataResponse(err)
+	}
+
+	// 2. Run query
+	startQueryResponse, err := hnyApi.StartQuery(currentContext, createQueryResponse.QueryId, request.DatasetSlug)
+	if err != nil {
+		return errorQueryDataResponse(err)
+	}
+
 	return QueryDataResponse{
-		QueryId:    createQueryResponse.QueryId,
+		QueryId:  createQueryResponse.QueryId,
+		ResultId: startQueryResponse.ResultId,
 	}, nil
 
 }
