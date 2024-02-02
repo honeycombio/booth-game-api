@@ -232,10 +232,16 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 		attribute.String("app.response.queryURL", queryResult.Links.QueryURL),
 		attribute.String("app.response.graphImageURL", queryResult.Links.GraphImageURL))
 
+	// Go doesn't map over slices, WTAF???!!???!
+	original := queryResult.Data.Results
+	mapped := make([]map[string]interface{}, len(original))
+
+	for i, v := range original {
+		mapped[i] = v.Data
+	}
+
 	response = honeycombQueryData{
-		Data: []map[string]interface{}{
-			{"key": "value"}, {"key": "value2"},
-		},
+		Data: mapped,
 	}
 
 	return response, nil
