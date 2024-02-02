@@ -201,7 +201,9 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 	// TODO: the thing
 	// 1. Poll the result URL until it's done
 	queryResult := getQueryResultResponse{}
+	pollCount := 0
 	for {
+		pollCount++
 		bodyBytes, err := api.sendToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
 		if err != nil {
 			span.RecordError(err)
@@ -226,7 +228,8 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 
 	// 3. Return it
 
-	span.SetAttributes(attribute.String("app.response.queryURL", queryResult.Links.QueryURL),
+	span.SetAttributes(attribute.Int("app.queryData.pollCount", pollCount),
+		attribute.String("app.response.queryURL", queryResult.Links.QueryURL),
 		attribute.String("app.response.graphImageURL", queryResult.Links.GraphImageURL))
 
 	response = honeycombQueryData{
