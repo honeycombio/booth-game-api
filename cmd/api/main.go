@@ -105,6 +105,7 @@ func addSpanAttributesToResponse(currentContext context.Context, response *event
 
 var settings struct {
 	OpenAIKey string `env:"openai_key"`
+	QueryDataApiKey string `env:"query_data_api_key"`
 }
 
 func main() {
