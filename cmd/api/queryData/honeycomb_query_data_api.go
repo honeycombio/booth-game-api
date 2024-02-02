@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -199,31 +200,34 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 
 	// TODO: the thing
 	// 1. Poll the result URL until it's done
-	bodyBytes, err := api.sendToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "Error fetching query results")
-		return response, err
-	}
-
-	// 2. Get the data
 	queryResult := getQueryResultResponse{}
-	err = json.Unmarshal(bodyBytes, &queryResult)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "Error unmarshalling response")
-		return response, err
-	}
+	for {
+		bodyBytes, err := api.sendToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "Error fetching query results")
+			return response, err
+		}
 
-	if !queryResult.Complete {
-		// TODO: wait a bit and poll again, unless a timeout has passed
-		err = errors.New("Query not complete")
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "Query not complete")
-		return response, err
+		// 2. Get the data
+		err = json.Unmarshal(bodyBytes, &queryResult)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "Error unmarshalling response")
+			return response, err
+		}
+
+		if queryResult.Complete {
+			break
+		} else {
+			time.Sleep(1 * time.Second)
+		}
 	}
 
 	// 3. Return it
+
+	span.SetAttributes(attribute.String("app.response.queryURL", queryResult.Links.QueryURL),
+		attribute.String("app.response.graphImageURL", queryResult.Links.GraphImageURL))
 
 	response = honeycombQueryData{
 		Data: []map[string]interface{}{
