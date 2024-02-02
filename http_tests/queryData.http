@@ -10,11 +10,12 @@
 
 POST {{hostname}}/api/queryData
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
-X-Observaquiz-Execution-Id: 1234
+X-Observaquiz-Execution-Id: 123
 
 {
     "attendee_api_key": "{{AttendeeAPIKey}}",
     "dataset_slug": "observaquiz-bff",
+    "query_name": "this is a test",
     "query": {
         "time_range": 600,
         "granularity": 0,
@@ -26,4 +27,34 @@ X-Observaquiz-Execution-Id: 1234
         ],
         "limit": 100
     }
+}
+
+### 
+
+# Here is a real example from Question 
+
+@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}} 
+
+POST {{hostname}}/api/queryData
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 123
+
+
+{
+"dataset_slug": "observaquiz-bff",
+"attendee_api_key": "{{AttendeeAPIKey}}",
+  "query": {
+    "time_range": 600,
+    "granularity": 0,
+    "breakdowns": ["app.post_answer.question", "app.llm.input", "app.llm.output"],
+    "calculations": [{ "op": "MAX", "column": "duration_ms" }],
+    "filters": [
+      { "column": "name", "op": "=", "value": "Ask LLM for Response" },
+      { "column": "app.observaquiz.execution_id", "op": "=", "value": "1c3ebd9b-e2fe--a5b1-228d371f7d7f" }
+    ],
+    "orders": [{ "column": "duration_ms", "op": "MAX", "order": "descending" }],
+    "havings": [],
+    "limit": 1000
+  },
+  "query_name": "Slowest response from LLM"
 }

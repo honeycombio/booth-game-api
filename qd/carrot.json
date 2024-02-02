@@ -1,15 +1,10 @@
 {
-  "time_range": 600,
-  "granularity": 0,
-  "breakdowns": ["name"],
-  "calculations": [
-    {
-      "op": "COUNT"
-    }
-  ],
+  "breakdowns": ["app.post_answer.question", "app.llm.input", "app.llm.output"],
+  "calculations": [{ "op": "MAX", "column": "duration_ms" }],
   "orders": [
     {
-      "op": "COUNT",
+      "column": "duration_ms",
+      "op": "MAX",
       "order": "descending"
     }
   ],

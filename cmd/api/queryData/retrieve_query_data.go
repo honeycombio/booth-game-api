@@ -22,12 +22,14 @@ type Filter struct {
 }
 
 type Calculation struct {
-	Op string `json:"op"`
+	Op     string `json:"op"`
+	Column string `json:"column"`
 }
 
 type Order struct {
-	Op    string `json:"op"`
-	Order string `json:"order"`
+	Op     string `json:"op"`
+	Order  string `json:"order"`
+	Column string `json:"column"`
 }
 
 type QueryDataRequest struct {

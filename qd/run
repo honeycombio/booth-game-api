@@ -6,13 +6,16 @@ set -e
 DATASET_SLUG=observaquiz-bff
 
 # define the query
-curl -X POST \
+curl -v -X POST \
 "https://api.honeycomb.io/1/queries/$DATASET_SLUG" \
   -H 'Content-Type: application/json' \
   -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY" \
   -d @carrot.json > query_create.json
 
 query_id=$(cat query_create.json | jq -r '.id')
+
+echo $query_id
+exit 0
 
 ## This just returns that definition, boring
 curl -X GET \
