@@ -38,7 +38,7 @@ type DefineQueryResponse struct {
 	QueryId string `json:"query"`
 }
 
-func (api honeycombQueryDataAPI) postToHoneycomb(currentContext context.Context, method string, relativeUrl string, payload []byte) (response []byte, err error) {
+func (api honeycombQueryDataAPI) sendToHoneycomb(currentContext context.Context, method string, relativeUrl string, payload []byte) (response []byte, err error) {
 	span := oteltrace.SpanFromContext(currentContext)
 	span.SetAttributes(attribute.String("app.request.url", api.HoneycombApiUrl+relativeUrl))
 
@@ -92,7 +92,7 @@ func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, que
 	span.SetAttributes(attribute.String("app.request.payload", string(queryDefinitionString)),
 		attribute.String("app.request.datasetSlug", datasetSlug))
 
-	bodyBytes, err := api.postToHoneycomb(currentContext, "POST", "/queries/"+datasetSlug, queryDefinitionString)
+	bodyBytes, err := api.sendToHoneycomb(currentContext, "POST", "/queries/"+datasetSlug, queryDefinitionString)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Error creating query")
@@ -143,7 +143,7 @@ func (api honeycombQueryDataAPI) StartQuery(currentContext context.Context, quer
 	span.SetAttributes(attribute.String("app.request.payload", string(startQueryInputString)),
 		attribute.String("app.request.datasetSlug", datasetSlug))
 
-	startQueryJson, err := api.postToHoneycomb(currentContext, "POST", "/query_results/"+datasetSlug, startQueryInputString)
+	startQueryJson, err := api.sendToHoneycomb(currentContext, "POST", "/query_results/"+datasetSlug, startQueryInputString)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -199,7 +199,7 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 
 	// TODO: the thing
 	// 1. Poll the result URL until it's done
-	bodyBytes, err := api.postToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
+	bodyBytes, err := api.sendToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Error fetching query results")
