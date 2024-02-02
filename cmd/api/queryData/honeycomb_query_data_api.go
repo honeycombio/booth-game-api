@@ -15,14 +15,14 @@ import (
  * Adapter for the Honeycomb QDAPI, so you could fake it out for testing
  */
 
-type HoneycombQueryDataAPI struct {
+type honeycombQueryDataAPI struct {
 	OurHoneycombAPIKey string
 	HoneycombApiUrl    string
 	Tracer             oteltrace.Tracer
 }
 
-func ProductionQueryDataAPI() HoneycombQueryDataAPI {
-	return HoneycombQueryDataAPI{
+func ProductionQueryDataAPI() honeycombQueryDataAPI {
+	return honeycombQueryDataAPI{
 		OurHoneycombAPIKey: os.Getenv("HONEYCOMB_API_KEY"),
 		HoneycombApiUrl:    "https://api.honeycomb.io/",
 		Tracer:             instrumentation.TracerProvider.Tracer("app.honeycomb_query_data_api"),
@@ -33,7 +33,7 @@ type DefineQueryResponse struct {
 	QueryId string `json:"query"`
 }
 
-func (api HoneycombQueryDataAPI) CreateQuery(currentContext context.Context, queryDefinition HoneycombQuery, datasetSlug string) (response DefineQueryResponse, err error) {
+func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, queryDefinition HoneycombQuery, datasetSlug string) (response DefineQueryResponse, err error) {
 	currentContext, span := api.Tracer.Start(currentContext, "Create Honeycomb Query")
 	defer span.End()
 
@@ -68,7 +68,7 @@ type StartHoneycombQuery struct {
 /**
  * https://docs.honeycomb.io/api/tag/Query-Data#operation/createQueryResult
  */
-func (api HoneycombQueryDataAPI) StartQuery(currentContext context.Context, queryId string, datasetSlug string) (response StartQueryResponse, err error) {
+func (api honeycombQueryDataAPI) StartQuery(currentContext context.Context, queryId string, datasetSlug string) (response StartQueryResponse, err error) {
 	currentContext, span := api.Tracer.Start(currentContext, "Start Honeycomb Query Run")
 	defer span.End()
 	span.SetAttributes(attribute.String("app.request.query_id", queryId))
@@ -91,5 +91,47 @@ func (api HoneycombQueryDataAPI) StartQuery(currentContext context.Context, quer
 	response = StartQueryResponse{
 		ResultId: resultId,
 	}
+	return response, nil
+}
+
+type honeycombQueryData struct {
+	Data []map[string]interface{} // values can be numbers or strings
+}
+
+type Data struct {
+	Results []struct {
+		Data map[string]interface{} `json:"data"`
+	} `json:"results"`
+}
+
+type links struct {
+	QueryURL      string `json:"query_url"`
+	GraphImageURL string `json:"graph_image_url"`
+}
+
+type getQueryResultResponse struct {
+	Query    interface{} `json:"query"`
+	ID       string      `json:"id"`
+	Complete bool        `json:"complete"`
+	Data     Data        `json:"data"`
+	Links    links       `json:"links"`
+}
+
+func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, resultId string, datasetSlug string) (response honeycombQueryData, err error) {
+	currentContext, span := api.Tracer.Start(currentContext, "Get Honeycomb Query Result")
+	defer span.End()
+	span.SetAttributes(attribute.String("app.request.result_id", resultId))
+
+	// TODO: the thing
+	// 1. Poll the result URL until it's done
+	// 2. Get the data
+	// 3. Return it
+
+	response = honeycombQueryData{
+		Data: []map[string]interface{}{
+			{"key": "value"}, {"key": "value2"},
+		},
+	}
+
 	return response, nil
 }

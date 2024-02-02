@@ -37,10 +37,10 @@ type QueryDataRequest struct {
 }
 
 type QueryDataResponse struct {
-	QueryId   string `json:"query_id"`
-	ResultId  string `json:"result_id"`
-	Error     string `json:"error"`
-	QueryData string `json:"query_data"`
+	QueryId   string                   `json:"query_id"`
+	ResultId  string                   `json:"result_id"`
+	Error     string                   `json:"error"`
+	QueryData []map[string]interface{} `json:"query_data"`
 }
 
 func errorQueryDataResponse(err error) (QueryDataResponse, error) {
@@ -56,7 +56,7 @@ func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest)
 		Op:     "=",
 		Value:  request.AttendeeApiKey,
 	}
-	// Append the new filter to the existing filters
+	// Make sure they only ever see their own data.
 	queryDefinition.Filters = append(queryDefinition.Filters, newFilter)
 
 	hnyApi := ProductionQueryDataAPI()
@@ -72,9 +72,16 @@ func RunHoneycombQuery(currentContext context.Context, request QueryDataRequest)
 		return errorQueryDataResponse(err)
 	}
 
+	// 3. Get results
+	queryData, err := hnyApi.GiveMeTheData(currentContext, startQueryResponse.ResultId, request.DatasetSlug)
+	if err != nil {
+		return errorQueryDataResponse(err)
+	}
+
 	return QueryDataResponse{
-		QueryId:  createQueryResponse.QueryId,
-		ResultId: startQueryResponse.ResultId,
+		QueryId:   createQueryResponse.QueryId,
+		ResultId:  startQueryResponse.ResultId,
+		QueryData: queryData.Data,
 	}, nil
 
 }
