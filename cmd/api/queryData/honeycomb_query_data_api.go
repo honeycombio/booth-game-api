@@ -113,11 +113,12 @@ func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, que
 	return response, nil
 }
 
-type StartQueryResponse struct {
+type startQueryResponseBody struct {
 	ResultId string `json:"result_id"`
+	Links    links  `json:"links"`
 }
 
-type StartHoneycombQuery struct {
+type startHoneycombQueryRequestBody struct {
 	QueryId       string `json:"query_id"`
 	DisableSeries bool   `json:"disable_series"`
 	Limit         int    `json:"limit"`
@@ -126,12 +127,12 @@ type StartHoneycombQuery struct {
 /**
  * https://docs.honeycomb.io/api/tag/Query-Data#operation/createQueryResult
  */
-func (api honeycombQueryDataAPI) StartQuery(currentContext context.Context, queryId string, datasetSlug string) (response StartQueryResponse, err error) {
+func (api honeycombQueryDataAPI) StartQuery(currentContext context.Context, queryId string, datasetSlug string) (response startQueryResponseBody, err error) {
 	currentContext, span := api.Tracer.Start(currentContext, "Start Honeycomb Query Run")
 	defer span.End()
 	span.SetAttributes(attribute.String("app.request.query_id", queryId))
 
-	startQueryInput := StartHoneycombQuery{
+	startQueryInput := startHoneycombQueryRequestBody{
 		QueryId:       queryId,
 		DisableSeries: true,
 		Limit:         100,
@@ -141,12 +142,27 @@ func (api honeycombQueryDataAPI) StartQuery(currentContext context.Context, quer
 	span.SetAttributes(attribute.String("app.request.payload", string(startQueryInputString)),
 		attribute.String("app.request.datasetSlug", datasetSlug))
 
-	//TODO: do the thing
+	startQueryJson, err := api.postToHoneycomb(currentContext, "/query_results/"+datasetSlug, startQueryInputString)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return response, err
+	}
+	startQueryResponse := startQueryResponseBody{}
+	err = json.Unmarshal(startQueryJson, &startQueryResponse)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Error unmarshalling response")
+		return response, err
+	}
 
-	resultId := "hard coded to 5678"
+	span.SetAttributes(attribute.String("app.response.queryURL", startQueryResponse.Links.QueryURL),
+		attribute.String("app.response.graphImageURL", startQueryResponse.Links.GraphImageURL))
+
+	resultId := startQueryResponse.ResultId
 	span.SetAttributes(attribute.String("app.response.result_id", resultId))
 
-	response = StartQueryResponse{
+	response = startQueryResponseBody{
 		ResultId: resultId,
 	}
 	return response, nil
