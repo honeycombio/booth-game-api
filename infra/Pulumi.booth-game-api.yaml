@@ -1,4 +1,6 @@
 config:
   aws:region: eu-west-1
+  booth-game:DEVREL_HONEYCOMB_API_KEY:
+    secure: AAABAFzOVI9INfwl10f4gJsZsynwPpqU7b6Ic7rXB+b9mh/fYOrJgFAtHw+mEW8s+sNEgd9E
   booth-game:openai-api-key:
     secure: AAABAEbeA5uhDqYWU8Fwjl8vJ4881ezM6tvKIX+0WampIrujA5WNsY4HwkvrdDK7ZZdQu+JIvwEICYvMAA2sfto013DN6/25TABim9nMADF8VXI=
