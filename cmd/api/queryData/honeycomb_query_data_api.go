@@ -58,7 +58,7 @@ func (api honeycombQueryDataAPI) postToHoneycomb(currentContext context.Context,
 		return nil, err
 	}
 	span.SetAttributes(attribute.Int("app.response.status", resp.StatusCode))
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		err = errors.New("Honeycomb API returned " + resp.Status)
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, que
 }
 
 type startQueryResponseBody struct {
-	ResultId string `json:"result_id"`
+	ResultId string `json:"id"`
 	Links    links  `json:"links"`
 }
 
