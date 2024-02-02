@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -49,6 +50,7 @@ func (api honeycombQueryDataAPI) postToHoneycomb(currentContext context.Context,
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("x-honeycomb-team", api.OurHoneycombAPIKey)
+	fmt.Println("Honeycomb API Key: " + api.OurHoneycombAPIKey)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
