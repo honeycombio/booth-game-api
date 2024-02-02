@@ -48,7 +48,6 @@ func errorQueryDataResponse(err error) (QueryDataResponse, error) {
 }
 
 func RunHoneycombQuery(currentContext context.Context, queryDataApiKey string, request QueryDataRequest) (response QueryDataResponse, err error) {
-
 	// 0. Construct the query
 	queryDefinition := request.QueryDefinition
 	newFilter := Filter{
