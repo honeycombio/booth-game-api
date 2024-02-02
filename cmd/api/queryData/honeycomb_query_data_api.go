@@ -194,7 +194,7 @@ type getQueryResultResponse struct {
 }
 
 func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, resultId string, datasetSlug string) (response honeycombQueryData, err error) {
-	currentContext, span := api.Tracer.Start(currentContext, "Get Honeycomb Query Result")
+	currentContext, span := api.Tracer.Start(currentContext, "Poll for Honeycomb Query Result")
 	defer span.End()
 	span.SetAttributes(attribute.String("app.request.result_id", resultId))
 
