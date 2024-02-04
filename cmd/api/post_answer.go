@@ -191,10 +191,11 @@ func parseLLMResponse(currentContext context.Context, llmResponse string) (respo
 		span.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure unmarshalling JSON")))
 		span.SetAttributes(attribute.String("score.reason", "Defaulted because we couldn't parse it from the LLM response"))
 		return LlmResponse{
-			Score:    100,
+			Score:    0,
 			Response: llmResponse,
 		}, err
 	}
+	span.SetAttributes(attribute.Int("score.value", response.Score))
 	span.SetAttributes(attribute.String("score.reason", "LLM"))
 	return response, nil
 }
