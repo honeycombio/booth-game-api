@@ -18,7 +18,8 @@ You'll need an OpenAI key, put this in a file named `environment.json` in the ro
         "openai_key": "<key>",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
         "OTEL_EXPORTER_OTLP_INSECURE": true,
-        "query_data_api_key": "<key>"
+        "query_data_api_key": "<key>",
+        "deepchecks_api_key": "goes here"
     }
 }
 ```

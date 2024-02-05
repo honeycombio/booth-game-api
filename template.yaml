@@ -25,6 +25,7 @@ Resources:
           OTEL_EXPORTER_OTLP_INSECURE:
           DEEPCHECKS_ENV_TYPE:
           query_data_api_key:
+          deepchecks_api_key:
 
   CALLBACK:
     Type: AWS::Serverless::Function 

@@ -116,7 +116,7 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Authorization", "Basic amVzc2l0cm9uQGhvbmV5Y29tYi5pbw==.b3JnX2hvbmV5Y29tYl9kZXZyZWxfODMxNTY0NjVlOGI4YjlkNA==.8JiwZHT8Di7sZ4o__0WNxw")
+	req.Header.Add("Authorization", "Basic "+settings.DeepchecksApiKey)
 
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),

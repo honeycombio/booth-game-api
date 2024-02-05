@@ -8,6 +8,7 @@ const gateway = apigatewayId.apply((id) => aws.apigatewayv2.getApi({ apiId: id }
 const config = new pulumi.Config();
 const openAIKey = config.requireSecret("openai-api-key");
 const queryDataApiKey = config.requireSecret("query-data-api-key");
+const deepchecksApiKey = config.requireSecret("deepchecks-api-key");
 
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
   statements: [
@@ -43,6 +44,7 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
       OTEL_EXPORTER_OTLP_INSECURE: "true",
       DEEPCHECKS_ENV_TYPE: "Production",
       query_data_api_key: queryDataApiKey,
+      deepchecks_api_key: deepchecksApiKey,
     },
   },
 });

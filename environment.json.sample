@@ -4,7 +4,8 @@
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
         "OTEL_EXPORTER_OTLP_INSECURE": true,
         "DEEPCHECKS_ENV_TYPE": "Local"
-        "query_data_api_key": "honeycomb api key"
+        "query_data_api_key": "honeycomb api key",
+        "deepchecks_api_key": "goes here"
     },
     "CALLBACK": {
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://collector:4318",
