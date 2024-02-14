@@ -1,5 +1,5 @@
 {
-    "name": "booth-game",
+    "name": "observaquiz-api",
     "main": "index.ts",
     "devDependencies": {
         "@types/node": "^18"

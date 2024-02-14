@@ -1,7 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
+import { registerAutoTags } from "./autotags";
 
-const coreInfra = new pulumi.StackReference("honeycomb-devrel/booth-game/booth-game");
+const coreInfra = new pulumi.StackReference(`honeycomb-devrel/observaquiz-coreinfra/${pulumi.getStack()}`);
 const apigatewayId = coreInfra.requireOutput("apiGatewayId");
 const collectorHostName = coreInfra.requireOutput("collectorHostname");
 const gateway = apigatewayId.apply((id) => aws.apigatewayv2.getApi({ apiId: id }));
@@ -9,6 +10,10 @@ const config = new pulumi.Config();
 const openAIKey = config.requireSecret("openai-api-key");
 const queryDataApiKey = config.requireSecret("query-data-api-key");
 const deepchecksApiKey = config.requireSecret("deepchecks-api-key");
+registerAutoTags({
+  "project": "observaquiz",
+  "stack": pulumi.getStack(),
+})
 
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
   statements: [
@@ -34,7 +39,7 @@ const apiLambda = new aws.lambda.Function("api-lambda", {
   role: lambdaExecutionRole.arn,
   runtime: aws.lambda.Go1dxRuntime,
 
-  code: new pulumi.asset.FileArchive("../api.zip"),
+  code: new pulumi.asset.FileArchive("../deploy/api.zip"),
   handler: "api",
   timeout: 40,
   environment: {
@@ -53,7 +58,7 @@ const deepChecksLambda = new aws.lambda.Function("deepchecks-lambda", {
   role: lambdaExecutionRole.arn,
   runtime: aws.lambda.Go1dxRuntime,
 
-  code: new pulumi.asset.FileArchive("../deepchecks_callback.zip"),
+  code: new pulumi.asset.FileArchive("../deploy/deepchecks_callback.zip"),
   handler: "deepchecks_callback",
   timeout: 40,
   environment: {

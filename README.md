@@ -1,6 +1,6 @@
-# Api for the booth game
+# Api for the observaquiz game
 
-This is the backend API for the booth game, it's primarily a go app handling those requests.
+This is the backend API for the observaquiz game, it's primarily a go app handling those requests.
 
 ## Local debugging
 
@@ -78,6 +78,6 @@ Log in to AWS somehow.
 Deploy
 
 ```sh
-pulumi stack select honeycomb-devrel/booth-game-api
+pulumi stack select honeycomb-devrel/prod
 pulumi up
 ```

@@ -1,4 +1,4 @@
-module booth_game_lambda
+module observaquiz_lambda
 
 go 1.21.5
 

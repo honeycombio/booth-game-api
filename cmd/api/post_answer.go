@@ -1,11 +1,11 @@
 package main
 
 import (
-	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"observaquiz_lambda/pkg/instrumentation"
 	"regexp"
 	"strings"
 	"time"

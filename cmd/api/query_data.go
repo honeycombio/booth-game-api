@@ -1,11 +1,11 @@
 package main
 
 import (
-	"booth_game_lambda/cmd/api/queryData"
-	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"encoding/json"
 	"fmt"
+	"observaquiz_lambda/cmd/api/queryData"
+	"observaquiz_lambda/pkg/instrumentation"
 	"regexp"
 
 	"github.com/aws/aws-lambda-go/events"

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"booth_game_lambda/pkg/instrumentation"
 	"context"
+	"observaquiz_lambda/pkg/instrumentation"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"

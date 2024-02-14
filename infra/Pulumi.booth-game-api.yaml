@@ -1,8 +1,0 @@
-config:
-  aws:region: eu-west-1
-  booth-game:openai-api-key:
-    secure: AAABAEbeA5uhDqYWU8Fwjl8vJ4881ezM6tvKIX+0WampIrujA5WNsY4HwkvrdDK7ZZdQu+JIvwEICYvMAA2sfto013DN6/25TABim9nMADF8VXI=
-  booth-game:query-data-api-key:
-    secure: AAABAL7TkG0FhyUeGBlFv9kxhYMDS0oMsQ1kjSTEAY7zLzdAyRbUlRDKwvNk6E1k0rzTYyWy
-  booth-game:querydata-honeycomb-api-key:
-    secure: AAABAPw/yr8j5C7T1BqljfBajy8aeINy2m+4fQjNeQpxiEC4gpDtr31XuKI+13ICyV8f/ITr

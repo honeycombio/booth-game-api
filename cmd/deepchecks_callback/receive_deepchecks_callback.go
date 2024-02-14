@@ -1,10 +1,10 @@
 package main
 
 import (
-	"booth_game_lambda/pkg/instrumentation"
 	"context"
 	"encoding/json"
 	"errors"
+	"observaquiz_lambda/pkg/instrumentation"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"

@@ -17,6 +17,6 @@ echo "Building..."
 ./build.sh
 
 echo "Running lambda simulator..."
-sam local start-api --env-vars environment.json --docker-network local-collector_collector_net
+sam local start-api --env-vars environment.json --docker-network local-collector_collector_net --skip-pull-image
 
 echo "Go to http_tests/questions.http in VSCode to click on some requests to try"

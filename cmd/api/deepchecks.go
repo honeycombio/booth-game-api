@@ -1,13 +1,13 @@
 package main
 
 import (
-	"booth_game_lambda/pkg/instrumentation"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"observaquiz_lambda/pkg/instrumentation"
 	"os"
 	"time"
 

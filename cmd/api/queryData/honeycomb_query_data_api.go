@@ -1,7 +1,6 @@
 package queryData
 
 import (
-	"booth_game_lambda/pkg/instrumentation"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"observaquiz_lambda/pkg/instrumentation"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"

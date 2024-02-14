@@ -39,6 +39,6 @@ jobs:
         with:
           work-dir: infra
           command: preview
-          stack-name: honeycomb-devrel/booth-game-api 
+          stack-name: honeycomb-devrel/prod
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}

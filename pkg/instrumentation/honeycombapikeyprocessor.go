@@ -11,9 +11,9 @@ import (
 type HoneycombApiKeyProcessor struct{}
 
 const (
-	APIKEY_BAGGAGE_NAME        = "boothgame.attendee_apikey"
-	EXECUTION_ID_BAGGAGE_NAME  = "app.observaquiz.execution_id"
-	EXECUTION_ID_ATTRIBUTE_KEY = "app.observaquiz.execution_id"
+	APIKEY_BAGGAGE_NAME            = "observaquiz.attendee_apikey"
+	EXECUTION_ID_BAGGAGE_NAME      = "app.observaquiz.execution_id"
+	EXECUTION_ID_ATTRIBUTE_KEY     = "app.observaquiz.execution_id"
 	ATTENDEE_API_KEY_ATTRIBUTE_KEY = "app.honeycomb_api_key"
 )
 

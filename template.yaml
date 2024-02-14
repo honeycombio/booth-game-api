@@ -8,7 +8,7 @@ Resources:
     Type: AWS::Serverless::Function 
     Properties:
       Description: "API Gateway endpoint URL"
-      Handler: api
+      Handler: ./dist/api
       Runtime: go1.x
       Timeout: 10
       Events:
@@ -31,7 +31,7 @@ Resources:
     Type: AWS::Serverless::Function 
     Properties:
       Description: "Deep checks callback from analysis"
-      Handler: deepchecks_callback
+      Handler: ./dist/deepchecks_callback
       Runtime: go1.x
       Timeout: 10
       Events:
