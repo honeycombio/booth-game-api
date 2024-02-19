@@ -12,8 +12,29 @@ processors:
         - attributes["app.honeycomb_api_key"] != nil
   groupbyattrs/honeycomb_api_key:
     keys:
-      - app.honeycomb_api_key
-
+      - app.honeycomb_api_key 
+  transform/labelconnector:
+    trace_statements:
+      - context: resource
+        statements:
+          - set(attributes["collector.connector"], "resourceattr_to_context")
+  transform/labelme:
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["collector.location"], "${COLLECTOR_LOCATION}")
+          - set(attributes["meta.signal_type"], "metrics") where attributes["meta.signal_type"] == nil
+          - set(attributes["collector.collector"], "${COLLECTOR_NAME}")
+    trace_statements:
+      - context: resource
+        statements:
+          - set(attributes["collector.location"], "${COLLECTOR_LOCATION}")
+          - set(attributes["collector.collector"], "${COLLECTOR_NAME}")
+    log_statements:
+      - context: resource
+        statements:
+          - set(attributes["collector.location"], "${COLLECTOR_LOCATION}")
+          - set(attributes["collector.collector"], "${COLLECTOR_NAME}")
 
 exporters:
   debug:
@@ -60,7 +81,7 @@ service:
 
     traces/attendee_ingest:
       receivers: [otlp]
-      processors: [filter, groupbyattrs/honeycomb_api_key]
+      processors: [filter, transform/labelme, groupbyattrs/honeycomb_api_key]
       exporters: [resourceattr_to_context]
     traces/attendee_export:
       receivers: [resourceattr_to_context]
@@ -68,9 +89,9 @@ service:
 
     metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/labelme, batch]
       exporters: [otlp]
     logs:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/labelme, batch]
       exporters: [otlp/logs]
