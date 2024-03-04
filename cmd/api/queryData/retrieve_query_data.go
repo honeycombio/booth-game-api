@@ -2,6 +2,8 @@ package queryData
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 )
 
 type HoneycombQuery struct {
@@ -52,10 +54,13 @@ func errorQueryDataResponse(err error) (QueryDataResponse, error) {
 func RunHoneycombQuery(currentContext context.Context, queryDataApiKey string, request QueryDataRequest) (response QueryDataResponse, err error) {
 	// 0. Construct the query
 	queryDefinition := request.QueryDefinition
+
+	hasher := sha256.New()
+	hasher.Write([]byte(request.AttendeeApiKey))
 	newFilter := Filter{
 		Column: "app.honeycomb_api_key",
 		Op:     "=",
-		Value:  request.AttendeeApiKey,
+		Value:  fmt.Sprintf("%x", hasher.Sum(nil)),
 	}
 	// Make sure they only ever see their own data.
 	queryDefinition.Filters = append(queryDefinition.Filters, newFilter)
