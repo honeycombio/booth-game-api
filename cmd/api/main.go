@@ -12,7 +12,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/jessevdk/go-flags"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -35,28 +37,10 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 		}
 	}()
 
-	var attendeeApiKey string
-	var executionId string = "unset"
-	for k, v := range request.Headers {
-		if strings.ToLower(k) == ATTENDEE_API_KEY_HEADER {
-			attendeeApiKey = v
-		}
-		if strings.ToLower(k) == EXECUTION_ID_HEADER {
-			executionId = v
-		}
-	}
-	if attendeeApiKey != "" {
-		currentContext, err = instrumentation.SetApiKeyInBaggage(currentContext, attendeeApiKey, executionId)
-		if err != nil {
-			lambdaSpan.SetAttributes(attribute.String("error.message", fmt.Sprintf("failed at setting api key in baggage")))
-			lambdaSpan.RecordError(err)
-		}
-		lambdaSpan.SetAttributes(attribute.String(instrumentation.ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
-		lambdaSpan.SetAttributes(attribute.String(instrumentation.EXECUTION_ID_ATTRIBUTE_KEY, executionId))
-	}
+	currentContext, _ = setAttributesOnSpanAndBaggageFromHeaders(currentContext, request)
 	instrumentation.AddHttpRequestAttributesToSpan(lambdaSpan, request)
 
-	response, err = ApiRouter(currentContext, request)
+	response, err = getResponseFromAPIRouter(currentContext, request)
 
 	instrumentation.AddHttpResponseAttributesToSpan(lambdaSpan, response)
 	addSpanAttributesToResponse(currentContext, &response)
@@ -65,7 +49,7 @@ func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2H
 
 }
 
-func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+func getResponseFromAPIRouter(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 
 	endpoint, endpointFound := api.findEndpoint(request.RequestContext.HTTP.Method, request.RequestContext.HTTP.Path)
@@ -86,21 +70,31 @@ func ApiRouter(currentContext context.Context, request events.APIGatewayV2HTTPRe
 }
 
 func addSpanAttributesToResponse(currentContext context.Context, response *events.APIGatewayV2HTTPResponse) {
-	// traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
-	/*
-		version
-		trace-id
-		parent-id
-		trace-flags
-	*/
-	lambdaSpan := oteltrace.SpanFromContext(currentContext)
 	if response.Headers == nil {
 		response.Headers = make(map[string]string)
 	}
-	response.Headers["x-tracechild"] = fmt.Sprintf("%s-%s-%s-%s", "00", lambdaSpan.SpanContext().TraceID().String(), lambdaSpan.SpanContext().SpanID().String(), "01")
-	if LocalTraceLink {
-		response.Headers["x-local-trace-link"] = instrumentation.LinkToTraceInLocalEnvironment(currentContext, ServiceName)
+
+	carrier := propagation.MapCarrier{}
+
+	otel.GetTextMapPropagator().Inject(currentContext, carrier)
+	response.Headers["x-tracechild"] = carrier["traceparent"]
+}
+
+func setAttributesOnSpanAndBaggageFromHeaders(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (context.Context, error) {
+	var currentSpan = oteltrace.SpanFromContext(currentContext)
+	var attendeeApiKey string
+	var executionId string = "unset"
+	for k, v := range request.Headers {
+		if strings.ToLower(k) == ATTENDEE_API_KEY_HEADER {
+			attendeeApiKey = v
+		}
+		if strings.ToLower(k) == EXECUTION_ID_HEADER {
+			executionId = v
+		}
 	}
+	currentSpan.SetAttributes(attribute.String(instrumentation.ATTENDEE_API_KEY_ATTRIBUTE_KEY, attendeeApiKey))
+	currentSpan.SetAttributes(attribute.String(instrumentation.EXECUTION_ID_ATTRIBUTE_KEY, executionId))
+	return instrumentation.SetApiKeyInBaggage(currentContext, attendeeApiKey, executionId)
 }
 
 var settings struct {
