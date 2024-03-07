@@ -10,38 +10,44 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var queryDataEndpoint = apiEndpoint{
 	"POST",
 	"/api/queryData",
 	regexp.MustCompile("^/api/queryData$"),
-	fetchQueryData,
+	postQueryData,
 	true,
 }
 
-func fetchQueryData(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+func postQueryData(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 
-	tracer := instrumentation.TracerProvider.Tracer("app.query_data")
-	currentContext, queryDataSpan := tracer.Start(currentContext, "Fetch Query Data from Honeycomb")
-	defer queryDataSpan.End()
-	defer func() {
-		if r := recover(); r != nil {
-			response = instrumentation.RespondToPanic(queryDataSpan, r)
-		}
-	}()
+	currentSpan := oteltrace.SpanFromContext(currentContext)
 
+	if settings.QueryDataApiKey != "" {
+		currentSpan.RecordError(err)
+		return instrumentation.ErrorResponse(err.Error(), 500), nil
+	}
 	/* Parse what they sent */
-	queryDataSpan.SetAttributes(attribute.String("request.body", request.Body), attribute.Bool("app.query_data_apikey_populated", settings.QueryDataApiKey != ""))
+	currentSpan.SetAttributes(
+		attribute.String("request.body", request.Body),
+		attribute.Bool("app.query_data_apikey_populated", settings.QueryDataApiKey != ""))
+
 	queryRequest := queryData.QueryDataRequest{}
+
 	err = json.Unmarshal([]byte(request.Body), &queryRequest)
 	if err != nil {
 		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
-		queryDataSpan.RecordError(newErr)
+		currentSpan.RecordError(newErr)
 		return instrumentation.ErrorResponse("Bad request. Expected format: { 'query': 'query as a string of escaped json' }", 400), nil
 	}
 
 	questionResponse, err := queryData.RunHoneycombQuery(currentContext, settings.QueryDataApiKey, queryRequest)
+	if err != nil {
+		currentSpan.RecordError(err)
+		return instrumentation.ErrorResponse(err.Error(), 500), nil
+	}
 
 	questionsJson, err := json.Marshal(questionResponse)
 	if err != nil {
