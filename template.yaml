@@ -2,6 +2,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Sample SAM Template for sam-app
+Architectures: 
+  - x86_64
 
 Resources:
   API:
