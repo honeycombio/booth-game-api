@@ -1,4 +1,4 @@
-
+--pplat
 # To make this work, install the VSCode extension humau:rest-client
 # then a little "Send Request" link appears above each GET and POST.
 
@@ -57,4 +57,37 @@ X-Observaquiz-Execution-Id: 123
     "limit": 1000
   },
   "query_name": "Slowest response from LLM"
+}
+
+### 
+# Count trace spans
+###
+
+POST {{hostname}}/api/queryData
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 123
+
+{
+  "query": {
+    "time_range": 7200,
+    "granularity": 0,
+    "calculations": [
+      {
+        "op": "COUNT"
+      }
+    ],
+    "filters": [
+      {
+        "column": "trace.traceId",
+        "op": "=",
+        "value": "720821fb6f8804f2e9dfc4f3c1ad0a52"
+      }
+    ],
+    "group_by": [
+      "trace.traceId"
+    ]
+  },
+  "query_name": "Slowest response from LLM",
+  "dataset_slug": "observaquiz-bff",
+  "attendee_api_key": "cNBcvqfEUpDzaFhWWuT7yE"
 }
