@@ -10,38 +10,48 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var queryDataEndpoint = apiEndpoint{
 	"POST",
 	"/api/queryData",
 	regexp.MustCompile("^/api/queryData$"),
-	fetchQueryData,
+	postQueryDataProxy,
 	true,
 }
 
-func fetchQueryData(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
+func postQueryDataProxy(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 
-	tracer := instrumentation.TracerProvider.Tracer("app.query_data")
-	currentContext, queryDataSpan := tracer.Start(currentContext, "Fetch Query Data from Honeycomb")
-	defer queryDataSpan.End()
-	defer func() {
-		if r := recover(); r != nil {
-			response = instrumentation.RespondToPanic(queryDataSpan, r)
-		}
-	}()
+	currentSpan := oteltrace.SpanFromContext(currentContext)
+
+	if settings.QueryDataApiKey == "" {
+		err = fmt.Errorf("QueryDataApiKey is not set")
+		currentSpan.RecordError(err)
+		currentSpan.SetStatus(codes.Error, "QueryDataApiKey is not set")
+		return instrumentation.ErrorResponse(err.Error(), 500), nil
+	}
 
 	/* Parse what they sent */
-	queryDataSpan.SetAttributes(attribute.String("request.body", request.Body), attribute.Bool("app.query_data_apikey_populated", settings.QueryDataApiKey != ""))
+	currentSpan.SetAttributes(attribute.String("observaquiz.qd.query", request.Body))
+
 	queryRequest := queryData.QueryDataRequest{}
+
 	err = json.Unmarshal([]byte(request.Body), &queryRequest)
 	if err != nil {
 		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
-		queryDataSpan.RecordError(newErr)
+		currentSpan.RecordError(newErr)
+		currentSpan.SetStatus(codes.Error, err.Error())
 		return instrumentation.ErrorResponse("Bad request. Expected format: { 'query': 'query as a string of escaped json' }", 400), nil
 	}
 
-	questionResponse, err := queryData.RunHoneycombQuery(currentContext, settings.QueryDataApiKey, queryRequest)
+	questionResponse, err := queryData.CreateAndRunHoneycombQuery(currentContext, settings.QueryDataApiKey, queryRequest)
+	if err != nil {
+		currentSpan.RecordError(err)
+		currentSpan.SetStatus(codes.Error, err.Error())
+		return instrumentation.ErrorResponse(err.Error(), 500), nil
+	}
 
 	questionsJson, err := json.Marshal(questionResponse)
 	if err != nil {

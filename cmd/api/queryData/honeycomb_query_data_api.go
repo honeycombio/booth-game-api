@@ -22,16 +22,18 @@ import (
  */
 
 type honeycombQueryDataAPI struct {
-	OurHoneycombAPIKey string
-	HoneycombApiUrl    string
-	Tracer             oteltrace.Tracer
+	queryDataApiKey string
+	apiBaseUrl      string
+	Tracer          oteltrace.Tracer
+	client          http.Client
 }
 
-func productionQueryDataAPI(apikey string) honeycombQueryDataAPI {
+func NewHoneycombAPI(apikey string) honeycombQueryDataAPI {
 	return honeycombQueryDataAPI{
-		OurHoneycombAPIKey: apikey,
-		HoneycombApiUrl:    "https://api.honeycomb.io/1", // our DevRel team is in US region.
-		Tracer:             instrumentation.TracerProvider.Tracer("app.honeycomb_query_data_api"),
+		queryDataApiKey: apikey,
+		apiBaseUrl:      "https://api.honeycomb.io/1", // our DevRel team is in US region.
+		Tracer:          instrumentation.TracerProvider.Tracer("querydata.honeycomb"),
+		client:          http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
 	}
 }
 
@@ -39,21 +41,18 @@ type DefineQueryResponse struct {
 	QueryId string `json:"query"`
 }
 
-func (api honeycombQueryDataAPI) sendToHoneycomb(currentContext context.Context, method string, relativeUrl string, payload []byte) (response []byte, err error) {
+func (api honeycombQueryDataAPI) send(currentContext context.Context, method string, relativeUrl string, payload []byte) (response []byte, err error) {
 	span := oteltrace.SpanFromContext(currentContext)
-	span.SetAttributes(attribute.String("app.request.url", api.HoneycombApiUrl+relativeUrl))
+	span.SetAttributes(attribute.String("app.request.url", api.apiBaseUrl+relativeUrl))
 
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-	url := api.HoneycombApiUrl + relativeUrl
+	url := api.apiBaseUrl + relativeUrl
 	req, _ := http.NewRequestWithContext(currentContext, method, url, bytes.NewBuffer(payload))
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("x-honeycomb-team", api.OurHoneycombAPIKey)
+	req.Header.Add("x-honeycomb-team", api.queryDataApiKey)
 
-	resp, err := httpClient.Do(req)
+	resp, err := api.client.Do(req)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -80,8 +79,8 @@ type honeycombCreateQueryResponse struct {
 	QueryId string `json:"id"`
 }
 
-func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, queryDefinition HoneycombQuery, datasetSlug string) (response DefineQueryResponse, err error) {
-	currentContext, span := api.Tracer.Start(currentContext, "Create Honeycomb Query")
+func (honeycombapi honeycombQueryDataAPI) CreateQuery(currentContext context.Context, queryDefinition HoneycombQuery, datasetSlug string) (response DefineQueryResponse, err error) {
+	currentContext, span := honeycombapi.Tracer.Start(currentContext, "Create Honeycomb Query")
 	defer span.End()
 
 	queryDefinitionString, err := json.Marshal(queryDefinition)
@@ -90,11 +89,12 @@ func (api honeycombQueryDataAPI) CreateQuery(currentContext context.Context, que
 		span.SetStatus(codes.Error, "Error marshalling query definition")
 		return response, err
 	}
-	span.SetAttributes(attribute.String("app.request.payload", string(queryDefinitionString)),
-		attribute.String("app.request.datasetSlug", datasetSlug))
+	span.SetAttributes(attribute.String("observaquiz.qd.query.body", string(queryDefinitionString)),
+		attribute.String("observaquiz.qd.query.dataset", datasetSlug))
 
-	bodyBytes, err := api.sendToHoneycomb(currentContext, "POST", "/queries/"+datasetSlug, queryDefinitionString)
+	bodyBytes, err := honeycombapi.send(currentContext, "POST", "/queries/"+datasetSlug, queryDefinitionString)
 	if err != nil {
+		span.SetAttributes(attribute.String("observaquiz.qd.error_response_body", string(bodyBytes)))
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Error creating query")
 		return response, err
@@ -141,28 +141,30 @@ func (api honeycombQueryDataAPI) StartQuery(currentContext context.Context, quer
 	}
 
 	startQueryInputString, err := json.Marshal(startQueryInput)
-	span.SetAttributes(attribute.String("app.request.payload", string(startQueryInputString)),
-		attribute.String("app.request.datasetSlug", datasetSlug))
+	span.SetAttributes(attribute.String("observaquiz.qd.query.id", string(startQueryInputString)),
+		attribute.String("observaquiz.qd.query.dataset", datasetSlug))
 
-	startQueryJson, err := api.sendToHoneycomb(currentContext, "POST", "/query_results/"+datasetSlug, startQueryInputString)
+	bodyBytes, err := api.send(currentContext, "POST", "/query_results/"+datasetSlug, startQueryInputString)
 	if err != nil {
 		span.RecordError(err)
+		span.SetAttributes(attribute.String("observaquiz.qd.error_response_body", string(bodyBytes)))
 		span.SetStatus(codes.Error, err.Error())
 		return response, err
 	}
 	startQueryResponse := startQueryResponseBody{}
-	err = json.Unmarshal(startQueryJson, &startQueryResponse)
+	err = json.Unmarshal(bodyBytes, &startQueryResponse)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Error unmarshalling response")
 		return response, err
 	}
 
-	span.SetAttributes(attribute.String("app.response.queryURL", startQueryResponse.Links.QueryURL),
-		attribute.String("app.response.graphImageURL", startQueryResponse.Links.GraphImageURL))
+	span.SetAttributes(
+		attribute.String("observaquiz.qd.result.link", startQueryResponse.Links.QueryURL),
+		attribute.String("observaquiz.qd.result.graph_link", startQueryResponse.Links.GraphImageURL))
 
 	resultId := startQueryResponse.ResultId
-	span.SetAttributes(attribute.String("app.response.result_id", resultId))
+	span.SetAttributes(attribute.String("observaquiz.qd.result.id", resultId))
 
 	response = startQueryResponseBody{
 		ResultId: resultId,
@@ -204,8 +206,9 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 	pollCount := 0
 	for {
 		pollCount++
-		bodyBytes, err := api.sendToHoneycomb(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
+		bodyBytes, err := api.send(currentContext, "GET", fmt.Sprintf("/query_results/%s/%s", datasetSlug, resultId), []byte{})
 		if err != nil {
+			span.SetAttributes(attribute.String("observaquiz.qd.error_response_body", string(bodyBytes)))
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "Error fetching query results")
 			return response, err
@@ -228,9 +231,9 @@ func (api honeycombQueryDataAPI) GiveMeTheData(currentContext context.Context, r
 
 	// 3. Return it
 
-	span.SetAttributes(attribute.Int("app.queryData.pollCount", pollCount),
-		attribute.String("app.response.queryURL", queryResult.Links.QueryURL),
-		attribute.String("app.response.graphImageURL", queryResult.Links.GraphImageURL))
+	span.SetAttributes(attribute.Int("observaquiz.qd.request.poll_count", pollCount),
+		attribute.String("observaquiz.qd.result.link", queryResult.Links.QueryURL),
+		attribute.String("observaquiz.qd.result.graph_link", queryResult.Links.GraphImageURL))
 
 	// Go doesn't map over slices, WTAF???!!???!
 	original := queryResult.Data.Results

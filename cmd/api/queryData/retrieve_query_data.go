@@ -51,7 +51,7 @@ func errorQueryDataResponse(err error) (QueryDataResponse, error) {
 	return QueryDataResponse{Error: err.Error()}, err
 }
 
-func RunHoneycombQuery(currentContext context.Context, queryDataApiKey string, request QueryDataRequest) (response QueryDataResponse, err error) {
+func CreateAndRunHoneycombQuery(currentContext context.Context, queryDataApiKey string, request QueryDataRequest) (response QueryDataResponse, err error) {
 	// 0. Construct the query
 	queryDefinition := request.QueryDefinition
 
@@ -65,7 +65,7 @@ func RunHoneycombQuery(currentContext context.Context, queryDataApiKey string, r
 	// Make sure they only ever see their own data.
 	queryDefinition.Filters = append(queryDefinition.Filters, newFilter)
 
-	hnyApi := productionQueryDataAPI(queryDataApiKey)
+	hnyApi := NewHoneycombAPI(queryDataApiKey)
 	// 1. Create query
 	createQueryResponse, err := hnyApi.CreateQuery(currentContext, queryDefinition, request.DatasetSlug)
 	if err != nil {
