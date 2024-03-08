@@ -14,7 +14,7 @@ services:
       - "13133:13133"
     environment:
       - HONEYCOMB_API_KEY=${HONEYCOMB_API_KEY}
-      - COLLECTOR_LOCATION="local ${USER}"
+      - COLLECTOR_LOCATION=local-${USER}
       - COLLECTOR_NAME=holly
 
 networks:
