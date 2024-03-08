@@ -1,4 +1,4 @@
-FROM ghcr.io/martinjt/ocb-config-builder:nightly as build
+FROM --platform=linux/amd64 ghcr.io/martinjt/ocb-config-builder:nightly as build
 ARG ADDITIONAL_REPOS
 ENV ADDITIONAL_REPOS=${ADDITIONAL_REPOS}
 COPY config.yaml /config.yaml
