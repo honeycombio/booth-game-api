@@ -2,6 +2,7 @@ services:
   collector:
     networks:
       - collector_net
+    platform: linux/amd64
     build:
       context: .
       dockerfile: Dockerfile
