@@ -52,32 +52,50 @@ Now try the test again.
 
 ## Build and Deploy.
 
-Build and package
-
-```sh
-GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o api src/*.go && zip api.zip api
+```
+./build.sh
 ```
 
-Make sure the packages are restored
+#### Deploy one-time setup
+
+Go to the infra directory
 
 ```sh
 cd infra
+```
+
+install packages
+
+```
 npm i
 ```
 
-Login to pulumi via the CLI
+Log in to pulumi via the CLI, and do some one-time things
 
 ```sh
 pulumi login
+pulumi stack select honeycomb-devrel/prod
+pulumi config refresh
 ```
 
 Follow the prompts to login
 
 Log in to AWS somehow.
 
-Deploy
+#### Deploy
+
+In the root of the project,
 
 ```sh
-pulumi stack select honeycomb-devrel/prod
-pulumi up
+./deploy.sh
 ```
+
+## changing secrets
+
+in infra:
+
+```sh
+pulumi config set --secret observaquiz-api:openai-api-key <value>
+```
+
+and then deploy again.
