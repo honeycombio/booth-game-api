@@ -59,6 +59,25 @@ func describeInteractionOnSpan(span trace.Span, interactionDescription LLMIntera
 		attribute.String("app.llm.finished_at", interactionDescription.FinishedAt.String()))
 }
 
+func maskString(input string) string {
+	// Define the masking character
+	maskChar := '*'
+
+	// Calculate the number of characters to mask (80% of the string length)
+	maskLength := int(float64(len(input)) * 0.8)
+
+	// Split the string into runes (Unicode characters)
+	chars := []rune(input)
+
+	// Mask the first 80% of characters
+	for i := 0; i < maskLength; i++ {
+		chars[i] = maskChar
+	}
+
+	// Convert the masked slice of runes back to a string
+	return string(chars)
+}
+
 func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) {
 	oteltrace.SpanFromContext(currentContext).SetAttributes(attribute.Bool("app.feature_flag.send_to_deepchecks", FeatureFlag_SendToDeepchecks))
 	if !FeatureFlag_SendToDeepchecks {
@@ -117,6 +136,7 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("Authorization", "Basic "+settings.DeepchecksApiKey)
+	span.SetAttributes(attribute.String("app.deepchecks.apikey_masked", maskString(settings.DeepchecksApiKey)))
 
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),

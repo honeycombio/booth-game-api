@@ -97,6 +97,15 @@ func setAttributesOnSpanAndBaggageFromHeaders(currentContext context.Context, re
 	return instrumentation.SetApiKeyInBaggage(currentContext, attendeeApiKey, executionId)
 }
 
+func getEventName(request events.APIGatewayV2HTTPRequest) string {
+	eventName := request.Headers["event-name"]
+	if eventName == "" {
+		eventName = default_event
+	}
+
+	return eventName
+}
+
 var settings struct {
 	OpenAIKey        string `env:"openai_key"`
 	QueryDataApiKey  string `env:"query_data_api_key"`
@@ -121,11 +130,3 @@ func main() {
 	)
 }
 
-func getEventName(request events.APIGatewayV2HTTPRequest) string {
-	eventName := request.Headers["event-name"]
-	if eventName == "" {
-		eventName = default_event
-	}
-
-	return eventName
-}

@@ -10,7 +10,7 @@ local_resource("Callback",
 )
 
 local_resource("Lambda Simulator",
-	serve_cmd = "sam local start-api --env-vars environment.json --docker-network local-collector_collector_net --skip-pull-image",
+	serve_cmd = "sam local start-api --env-vars environment.json --docker-network local-collector_collector_net",
 	resource_deps = ["collector", "API", "Callback"],
 	links = ["http://127.0.0.1:3000/"]
 )
