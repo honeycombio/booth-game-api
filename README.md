@@ -8,7 +8,7 @@ This is the backend API for the observaquiz game, it's primarily a go app handli
 
 This uses AWS SAM (Serverless Application Model).
 
-We define the API in `template.yaml`, with it's name etc. this looks for it on the filesystem as a relative path.
+We define the API in `template.yaml`, with its name etc. this looks for it on the filesystem as a relative path.
 
 You'll need an OpenAI key, put this in a file named `environment.json` in the root directory, with the format:
 
