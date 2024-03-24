@@ -81,15 +81,54 @@ Content-Type: application/json
       {
         "column": "trace.trace_id",
         "op": "=",
-        "value": "fdf357489dafbd986b84901308169ee7"
+        "value": "7a6be00368c85f314ade1c9a50de7210"
       }
     ],
     "breakdowns": [
-      "trace.trace_id",
       "name"
     ]
   },
   "query_name": "Slowest response from LLM",
   "dataset_slug": "observaquiz-bff",
-  "attendee_api_key": "cNBcvqfEUpDzaFhWWuT7yE"
+  "attendee_api_key": "{{AttendeeAPIKey}}"
 }
+
+###
+# Which trace is interesting?
+####
+
+POST {{hostname}}/api/queryData
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 2351325234
+Content-Type: application/json
+
+{
+    "query_name": "count events by trace ID",
+    "dataset_slug": "observaquiz-bff",
+    "attendee_api_key": "{{AttendeeAPIKey}}",
+    "query": {
+      "time_range": 7200,
+      "breakdowns": [
+        "trace.trace_id"
+      ],
+      "calculations": [
+        {
+          "op": "COUNT"
+        }
+      ],
+      "filters": [
+        {
+          "column": "app.observaquiz.execution_id",
+          "op": "=",
+          "value": "2351325234"
+        }
+      ],
+      "orders": [
+        {
+          "op": "COUNT",
+          "order": "descending"
+        }
+      ],
+      "limit": 10
+    }
+  }

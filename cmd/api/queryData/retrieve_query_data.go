@@ -32,9 +32,9 @@ type Calculation struct {
 }
 
 type Order struct {
-	Op     string `json:"op"`
-	Order  string `json:"order"`
-	Column string `json:"column"`
+	Op     string  `json:"op"`
+	Order  string  `json:"order"`
+	Column *string `json:"column,omitempty"`
 }
 
 type QueryDataRequest struct {
