@@ -4,6 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type HoneycombQuery struct {
@@ -57,10 +60,13 @@ func CreateAndRunHoneycombQuery(currentContext context.Context, queryDataApiKey 
 
 	hasher := sha256.New()
 	hasher.Write([]byte(request.AttendeeApiKey))
+	expectedValueOfApiKey := fmt.Sprintf("%x", hasher.Sum(nil))
+	oteltrace.SpanFromContext(currentContext).SetAttributes(attribute.String("observaquiz.hashed_honeycomb_api_key", expectedValueOfApiKey))
+
 	newFilter := Filter{
 		Column: "app.honeycomb_api_key",
 		Op:     "=",
-		Value:  fmt.Sprintf("%x", hasher.Sum(nil)),
+		Value:  expectedValueOfApiKey,
 	}
 	// Make sure they only ever see their own data.
 	queryDefinition.Filters = append(queryDefinition.Filters, newFilter)
