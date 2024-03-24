@@ -33,7 +33,7 @@ func NewHoneycombAPI(apikey string) honeycombQueryDataAPI {
 		queryDataApiKey: apikey,
 		apiBaseUrl:      "https://api.honeycomb.io/1", // our DevRel team is in US region.
 		Tracer:          instrumentation.TracerProvider.Tracer("querydata.honeycomb"),
-		client:          http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)},
+		client:          http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}, // why don't I see a client span?
 	}
 }
 
@@ -59,10 +59,6 @@ func (api honeycombQueryDataAPI) send(currentContext context.Context, method str
 		return nil, err
 	}
 	span.SetAttributes(attribute.Int("app.response.status", resp.StatusCode))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		err = errors.New("Honeycomb API returned " + resp.Status)
-		return nil, err
-	}
 
 	// Read the body
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -70,6 +66,11 @@ func (api honeycombQueryDataAPI) send(currentContext context.Context, method str
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err = errors.New("Uh-oh, honeycomb API returned " + resp.Status + ": " + string(bodyBytes))
+		return bodyBytes, err
+	}
 	span.SetAttributes(attribute.String("app.response.body", string(bodyBytes)))
 
 	return bodyBytes, nil
@@ -83,6 +84,9 @@ func (honeycombapi honeycombQueryDataAPI) CreateQuery(currentContext context.Con
 	currentContext, span := honeycombapi.Tracer.Start(currentContext, "Create Honeycomb Query")
 	defer span.End()
 
+	if queryDefinition.Limit == 0 {
+		queryDefinition.Limit = 100
+	}
 	queryDefinitionString, err := json.Marshal(queryDefinition)
 	if err != nil {
 		span.RecordError(err)

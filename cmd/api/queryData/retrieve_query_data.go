@@ -24,8 +24,8 @@ type Filter struct {
 }
 
 type Calculation struct {
-	Op     string `json:"op"`
-	Column string `json:"column"`
+	Op     string  `json:"op"`
+	Column *string `json:"column,omitempty"`
 }
 
 type Order struct {
