@@ -6,7 +6,7 @@
 # that the person would have entered into the quiz
 # Otherwise you'll get internal server errors from our brilliant function
 
-@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}} 
+@AttendeeAPIKey = {{$dotenv ATTENDEE_API_KEY}}
 
 POST {{hostname}}/api/queryData
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
@@ -81,10 +81,10 @@ Content-Type: application/json
       {
         "column": "trace.trace_id",
         "op": "=",
-        "value": "c3475c456173ae516d8d3c3eba13e61a"
+        "value": "fdf357489dafbd986b84901308169ee7"
       }
     ],
-    "group_by": [
+    "breakdowns": [
       "trace.trace_id",
       "name"
     ]
