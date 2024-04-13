@@ -34,6 +34,7 @@ type OpinionReported struct {
 	Message string `json:"message"`
 }
 
+
 func (settings DeepChecksAPI) ReportOpinion(currentContext context.Context, interactionOpinion LLMInteractionOpinionReport) (result OpinionReported) {
 	trace.SpanFromContext(currentContext).SetAttributes(attribute.Bool("app.feature_flag.send_to_deepchecks", FeatureFlag_SendToDeepchecks))
 	if !FeatureFlag_SendToDeepchecks {

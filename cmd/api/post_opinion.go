@@ -23,17 +23,27 @@ var postOpinionEndpoint = apiEndpoint{
 }
 
 type PostOpinionBody struct {
-	EvaluationId string `json:"evaluation_id"`
-	Opinion      string `json:"opinion"`
+	EvaluationId string  `json:"evaluation_id"`
+	Opinion      Opinion `json:"opinion"`
 }
 
 type PostOpinionResponse struct {
-	EvaluationId string `json:"evaluation_id"`
-	Opinion      string `json:"opinion"`
-	Annotation   string `json:"annotation"`
-	Success      bool   `json:"success"`
-	Reported     bool   `json:"reported"`
-	Message      string `json:"message"`
+	EvaluationId string                `json:"evaluation_id"`
+	Opinion      Opinion               `json:"opinion"`
+	Annotation   deepchecks.Annotation `json:"annotation"`
+	Success      bool                  `json:"success"`
+	Reported     bool                  `json:"reported"`
+	Message      string                `json:"message"`
+}
+
+type Opinion string
+
+var opinionToAnnotation = map[Opinion]deepchecks.Annotation{
+	"whoa": deepchecks.Good,
+	"meh":  deepchecks.Bad,
+	"ok":   deepchecks.Unknown,
+	"yeah": deepchecks.Good,
+	// Add more mappings here
 }
 
 func postOpinion(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
@@ -48,13 +58,14 @@ func postOpinion(currentContext context.Context, request events.APIGatewayV2HTTP
 
 	/* Parse what they sent */
 	postOpinionSpan.SetAttributes(attribute.String("request.body", request.Body))
-	answer := PostOpinionBody{}
-	err = json.Unmarshal([]byte(request.Body), &answer)
+	opinionReport := PostOpinionBody{}
+	err = json.Unmarshal([]byte(request.Body), &opinionReport)
 	if err != nil {
 		newErr := fmt.Errorf("error unmarshalling answer: %w\n request body: %s", err, request.Body)
 		postOpinionSpan.RecordError(newErr)
 		return events.APIGatewayV2HTTPResponse{Body: "Bad request. Expected format: { 'evaluation_id': 'trace-span', opinion: 'whoa' }", StatusCode: 400}, nil
 	}
+	postOpinionSpan.SetAttributes(attribute.String("app.evaluation_id", opinionReport.EvaluationId), attribute.String("app.opinion", string(opinionReport.Opinion)))
 
 	// /* what question are they referring to? */
 	// eventName := getEventName(request)
@@ -85,19 +96,25 @@ func postOpinion(currentContext context.Context, request events.APIGatewayV2HTTP
 	// }
 	// postOpinionSpan.SetAttributes(attribute.String("app.post_answer.question", question))
 
+	annotation, ok := opinionToAnnotation[opinionReport.Opinion]
+	if !ok {
+		annotation = deepchecks.Unknown
+	}
+	appVersion := "1" // TODO: get from question definition. Except we have to use the number here :( :(
+	postOpinionSpan.SetAttributes(attribute.String("app.annotation", string(annotation)), attribute.String("app.app_version", appVersion))
 	deepchecksAPI := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}
 	interactionReported := deepchecksAPI.ReportOpinion(currentContext, deepchecks.LLMInteractionOpinionReport{
-		EvaluationId: answer.EvaluationId,
-		Annotation:   deepchecks.Unknown,
-		AppVersionId: "1", // TODO: get from question definition. Except we have to use the number here :( :(
+		EvaluationId: opinionReport.EvaluationId,
+		Annotation:   annotation,
+		AppVersionId: appVersion,
 	})
 
 	postOpinionSpan.SetAttributes(attribute.Bool("app.reported", interactionReported.Reported), attribute.Bool("app.success", interactionReported.Success))
 
 	/* tell the UI what we got */
-	result := PostOpinionResponse{EvaluationId: answer.EvaluationId,
-		Opinion:    answer.Opinion,
-		Annotation: string(deepchecks.Unknown),
+	result := PostOpinionResponse{EvaluationId: opinionReport.EvaluationId,
+		Opinion:    opinionReport.Opinion,
+		Annotation: annotation,
 		Reported:   interactionReported.Reported,
 		Success:    interactionReported.Success,
 		Message:    interactionReported.Message}
