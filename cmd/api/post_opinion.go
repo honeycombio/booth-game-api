@@ -28,7 +28,12 @@ type PostOpinionBody struct {
 }
 
 type PostOpinionResponse struct {
-	Something string `json:"something"`
+	EvaluationId string `json:"evaluation_id"`
+	Opinion      string `json:"opinion"`
+	Annotation   string `json:"annotation"`
+	Success      bool   `json:"success"`
+	Reported     bool   `json:"reported"`
+	Message      string `json:"message"`
 }
 
 func postOpinion(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
@@ -83,14 +88,19 @@ func postOpinion(currentContext context.Context, request events.APIGatewayV2HTTP
 	deepchecksAPI := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}
 	interactionReported := deepchecksAPI.ReportOpinion(currentContext, deepchecks.LLMInteractionOpinionReport{
 		EvaluationId: answer.EvaluationId,
-		Opinion:      deepchecks.Unknown,
+		Annotation:   deepchecks.Unknown,
 		AppVersionId: "1", // TODO: get from question definition. Except we have to use the number here :( :(
 	})
 
 	postOpinionSpan.SetAttributes(attribute.Bool("app.reported", interactionReported.Reported), attribute.Bool("app.success", interactionReported.Success))
 
 	/* tell the UI what we got */
-	result := PostOpinionResponse{Something: "does this work"}
+	result := PostOpinionResponse{EvaluationId: answer.EvaluationId,
+		Opinion:    answer.Opinion,
+		Annotation: string(deepchecks.Unknown),
+		Reported:   interactionReported.Reported,
+		Success:    interactionReported.Success,
+		Message:    interactionReported.Message}
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		postOpinionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))

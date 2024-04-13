@@ -9,28 +9,29 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type Opinion string
+type Annotation string
 
 const (
-	Good    Opinion = "good"
-	Bad     Opinion = "bad"
-	Unknown Opinion = "unknown"
+	Good    Annotation = "good"
+	Bad     Annotation = "bad"
+	Unknown Annotation = "unknown"
 )
 
 // https://llmdocs.deepchecks.com/reference/updateinteractions
 type LLMInteractionOpinionReport struct {
-	EvaluationId string  `json:"evaluation_id"`
-	AppVersionId string  `json:"app_version_id"`
-	Opinion      Opinion `json:"annotation"`
+	EvaluationId string     `json:"evaluation_id"`
+	AppVersionId string     `json:"app_version_id"`
+	Annotation   Annotation `json:"annotation"`
 }
 
 type annotationForDeepChecks struct {
-	Annotation Opinion `json:"annotation"`
+	Annotation Annotation `json:"annotation"`
 }
 
 type OpinionReported struct {
 	Reported bool `json:"reported"`
 	Success  bool `json:"success"`
+	Message string `json:"message"`
 }
 
 func (settings DeepChecksAPI) ReportOpinion(currentContext context.Context, interactionOpinion LLMInteractionOpinionReport) (result OpinionReported) {
@@ -44,14 +45,15 @@ func (settings DeepChecksAPI) ReportOpinion(currentContext context.Context, inte
 
 	span.SetAttributes(attribute.String("app.llm.evaluation_id", interactionOpinion.EvaluationId),
 		attribute.String("app.llm.app_version_id", interactionOpinion.AppVersionId),
-		attribute.String("app.llm.annotation", string(interactionOpinion.Opinion)))
+		attribute.String("app.llm.annotation", string(interactionOpinion.Annotation)))
 
-	data := annotationForDeepChecks{Annotation: interactionOpinion.Opinion}
+	data := annotationForDeepChecks{Annotation: interactionOpinion.Annotation}
 	jsonData, _ := json.Marshal(data)
 
 	url := fmt.Sprintf("application_versions/%s/interactions/%s", interactionOpinion.AppVersionId, interactionOpinion.EvaluationId)
 
-	_, err := settings.send_to_deepchecks(currentContext, "PUT", url, jsonData)
+	body, err := settings.send_to_deepchecks(currentContext, "PUT", url, jsonData)
 
-	return OpinionReported{Reported: true, Success: err == nil}
+	// It is not the most secure thing to return the body. It should go only into the traces.
+	return OpinionReported{Reported: true, Success: err == nil, Message: string(body)}
 }
