@@ -154,7 +154,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	llmResponse := openaiChatCompletionResponse.Choices[0].Message.Content
 
 	/* report for analysis */
-	tellDeepChecksAboutIt(currentContext, LLMInteractionDescription{
+	interactionReported := tellDeepChecksAboutIt(currentContext, LLMInteractionDescription{
 		FullPrompt: fullPrompt,
 		Input:      answer.Answer,
 		Output:     llmResponse,
@@ -167,7 +167,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	parsedLlmResponse, err := parseLLMResponse(currentContext, llmResponse)
 
 	/* tell the UI what we got */
-	result := PostAnswerResponse{Response: parsedLlmResponse.Response, Score: parsedLlmResponse.Score}
+	result := PostAnswerResponse{Response: parsedLlmResponse.Response, Score: parsedLlmResponse.Score, EvaluationId: interactionReported.EvaluationId}
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		postQuestionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
@@ -203,6 +203,7 @@ func parseLLMResponse(currentContext context.Context, llmResponse string) (respo
 type PostAnswerResponse struct {
 	Response string `json:"response"`
 	Score    int    `json:"score"`
+	EvaluationId string `json:"evaluation_id"`
 }
 
 func addLlmResponseAttributesToSpan(span trace.Span, llmResponse openai.ChatCompletionResponse) {

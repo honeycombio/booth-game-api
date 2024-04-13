@@ -78,10 +78,14 @@ func maskString(input string) string {
 	return string(chars)
 }
 
-func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) {
+type InteractionReported struct {
+	EvaluationId string
+}
+
+func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) (result InteractionReported) {
 	oteltrace.SpanFromContext(currentContext).SetAttributes(attribute.Bool("app.feature_flag.send_to_deepchecks", FeatureFlag_SendToDeepchecks))
 	if !FeatureFlag_SendToDeepchecks {
-		return
+		return InteractionReported{}
 	}
 
 	currentContext, span := instrumentation.TracerProvider.Tracer("deepchecks").Start(currentContext, "Report LLM interaction for evaluation")
@@ -93,6 +97,7 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 
 	// JESS: I think we'd rather use the LLM span? but this one will do.
 	interactionId := fmt.Sprintf("%s-%s", span.SpanContext().TraceID(), span.SpanContext().SpanID())
+	result = InteractionReported{EvaluationId: interactionId}
 	span.SetAttributes(attribute.String("deepchecks.user_interaction_id", interactionId),
 		attribute.String("deepchecks.app_name", appName),
 		attribute.String("deepchecks.version_name", appVersion),
@@ -124,7 +129,7 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 		span.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON"),
 			attribute.String("error.json.input", fmt.Sprintf("%v", data))))
 		span.SetStatus(codes.Error, err.Error())
-		return
+		return InteractionReported{}
 	}
 
 	url := "https://app.llm.deepchecks.com/api/v1/interactions"
@@ -156,4 +161,5 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 	span.SetAttributes(attribute.String("response.body", string(body)))
 
 	fmt.Println(string(body))
+	return
 }
