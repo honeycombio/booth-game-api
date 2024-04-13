@@ -3,6 +3,7 @@ package deepchecks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -48,7 +49,9 @@ func (settings DeepChecksAPI) ReportOpinion(currentContext context.Context, inte
 	data := annotationForDeepChecks{Annotation: interactionOpinion.Opinion}
     jsonData, _ := json.Marshal(data)
 
-	_, err := settings.send_to_deepchecks(currentContext, jsonData);
+	url := fmt.Sprintf("application_versions/%s/interactions/%s", interactionOpinion.AppVersionId, interactionOpinion.EvaluationId)
+
+	_, err := settings.send_to_deepchecks(currentContext, "PUT", url, jsonData);
 
 	return OpinionReported{ Reported: true, Success: err == nil}
 }

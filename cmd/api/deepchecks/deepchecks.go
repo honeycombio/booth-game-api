@@ -118,18 +118,18 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 		return InteractionReported{}
 	}
 
-	body, _ := settings.send_to_deepchecks(currentContext, jsonData)
+	body, _ := settings.send_to_deepchecks(currentContext, "POST", "interactions", jsonData)
 
 	fmt.Println(string(body))
 	return
 }
 
-func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context, jsonData []byte) (body []byte, err error) {
+func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context, method string, relativeUrl string, jsonData []byte) (body []byte, err error) {
 	span := trace.SpanFromContext(context.Background())
 
-	url := "https://app.llm.deepchecks.com/api/v1/interactions"
+	url := "https://app.llm.deepchecks.com/api/v1/" + relativeUrl
 	span.SetAttributes(attribute.String("request.body", string(jsonData)))
-	req, _ := http.NewRequestWithContext(currentContext, "POST", url, bytes.NewBuffer(jsonData))
+	req, _ := http.NewRequestWithContext(currentContext, method, url, bytes.NewBuffer(jsonData))
 
 	//req = req.WithContext(currentContext)
 

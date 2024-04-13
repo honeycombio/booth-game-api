@@ -56,3 +56,15 @@ Content-Type: application/json
 {
     "answer": "this doesn't work"
 }
+
+### Now report an opinion
+
+POST {{hostname}}/api/opinion
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+Content-Type: application/json
+
+{
+    "evaluation_id": "copy this from a questions response",
+    "opinion": "whoa"
+}
