@@ -16,6 +16,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	"observaquiz_lambda/cmd/api/deepchecks"
 )
 
 var postAnswerEndpoint = apiEndpoint{
@@ -154,7 +156,9 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	llmResponse := openaiChatCompletionResponse.Choices[0].Message.Content
 
 	/* report for analysis */
-	interactionReported := tellDeepChecksAboutIt(currentContext, LLMInteractionDescription{
+	
+	deepchecksAPI := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}
+	interactionReported := deepchecksAPI.ReportInteraction(currentContext, deepchecks.LLMInteractionDescription{
 		FullPrompt: fullPrompt,
 		Input:      answer.Answer,
 		Output:     llmResponse,

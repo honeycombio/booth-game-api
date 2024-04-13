@@ -1,4 +1,4 @@
-package main
+package deepchecks
 
 import (
 	"bytes"
@@ -15,13 +15,16 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 const FeatureFlag_SendToDeepchecks = true
 
 const appName = "Booth Game Quiz"
 const appVersion = "alpha"
+
+type DeepChecksAPI struct {
+	ApiKey string
+}
 
 // Define your data structure
 type DeepChecksCreateInteractions struct {
@@ -82,8 +85,8 @@ type InteractionReported struct {
 	EvaluationId string
 }
 
-func tellDeepChecksAboutIt(currentContext context.Context, interactionDescription LLMInteractionDescription) (result InteractionReported) {
-	oteltrace.SpanFromContext(currentContext).SetAttributes(attribute.Bool("app.feature_flag.send_to_deepchecks", FeatureFlag_SendToDeepchecks))
+func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, interactionDescription LLMInteractionDescription) (result InteractionReported) {
+	trace.SpanFromContext(currentContext).SetAttributes(attribute.Bool("app.feature_flag.send_to_deepchecks", FeatureFlag_SendToDeepchecks))
 	if !FeatureFlag_SendToDeepchecks {
 		return InteractionReported{}
 	}
@@ -140,8 +143,8 @@ func tellDeepChecksAboutIt(currentContext context.Context, interactionDescriptio
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Authorization", "Basic "+settings.DeepchecksApiKey)
-	span.SetAttributes(attribute.String("app.deepchecks.apikey_masked", maskString(settings.DeepchecksApiKey)))
+	req.Header.Add("Authorization", "Basic "+ settings.ApiKey)
+	span.SetAttributes(attribute.String("app.deepchecks.apikey_masked", maskString(settings.ApiKey)))
 
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
