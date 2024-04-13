@@ -22,8 +22,9 @@ const FeatureFlag_SendToDeepchecks = true
 const appName = "Booth Game Quiz"
 const appVersion = "alpha"
 
-// tracerProvider is initialized in main 
-var tracer = instrumentation.TracerProvider.Tracer("observaquiz-bff/deepchecks")
+func tracer() trace.Tracer {
+	return instrumentation.TracerProvider.Tracer("observaquiz-bff/deepchecks")
+}
 
 type DeepChecksAPI struct {
 	ApiKey string
@@ -75,7 +76,7 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 		return InteractionReported{}
 	}
 
-	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
+	currentContext, span := tracer().Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
 
 	// JESS: rename this environment variable.
