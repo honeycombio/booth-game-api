@@ -22,6 +22,8 @@ const FeatureFlag_SendToDeepchecks = true
 const appName = "Booth Game Quiz"
 const appVersion = "alpha"
 
+var tracer = instrumentation.TracerProvider.Tracer("deepchecks")
+
 type DeepChecksAPI struct {
 	ApiKey string
 }
@@ -62,25 +64,6 @@ func describeInteractionOnSpan(span trace.Span, interactionDescription LLMIntera
 		attribute.String("app.llm.finished_at", interactionDescription.FinishedAt.String()))
 }
 
-func maskString(input string) string {
-	// Define the masking character
-	maskChar := '*'
-
-	// Calculate the number of characters to mask (80% of the string length)
-	maskLength := int(float64(len(input)) * 0.8)
-
-	// Split the string into runes (Unicode characters)
-	chars := []rune(input)
-
-	// Mask the first 80% of characters
-	for i := 0; i < maskLength; i++ {
-		chars[i] = maskChar
-	}
-
-	// Convert the masked slice of runes back to a string
-	return string(chars)
-}
-
 type InteractionReported struct {
 	EvaluationId string
 }
@@ -91,7 +74,7 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 		return InteractionReported{}
 	}
 
-	currentContext, span := instrumentation.TracerProvider.Tracer("deepchecks").Start(currentContext, "Report LLM interaction for evaluation")
+	currentContext, span := tracer.Start(currentContext, "Report LLM interaction for evaluation")
 	defer span.End()
 
 	// JESS: rename this environment variable.
@@ -135,13 +118,13 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 		return InteractionReported{}
 	}
 
-	body := settings.send_to_deepchecks(currentContext, jsonData)
+	body, _ := settings.send_to_deepchecks(currentContext, jsonData)
 
 	fmt.Println(string(body))
 	return
 }
 
-func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context, jsonData []byte) (body []byte) {
+func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context, jsonData []byte) (body []byte, err error) {
 	span := trace.SpanFromContext(context.Background())
 
 	url := "https://app.llm.deepchecks.com/api/v1/interactions"
@@ -167,9 +150,28 @@ func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context,
 		return
 	}
 
-	body, _ = io.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	defer res.Body.Close()
 
 	span.SetAttributes(attribute.String("response.body", string(body)))
 	return
+}
+
+func maskString(input string) string {
+	// Define the masking character
+	maskChar := '*'
+
+	// Calculate the number of characters to mask (80% of the string length)
+	maskLength := int(float64(len(input)) * 0.8)
+
+	// Split the string into runes (Unicode characters)
+	chars := []rune(input)
+
+	// Mask the first 80% of characters
+	for i := 0; i < maskLength; i++ {
+		chars[i] = maskChar
+	}
+
+	// Convert the masked slice of runes back to a string
+	return string(chars)
 }
