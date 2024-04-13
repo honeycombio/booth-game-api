@@ -24,8 +24,8 @@ func main() {
 	currentContext := context.Background()
 
 	tracerProvider := instrumentation.CreateTracerProvider(currentContext, ServiceName)
+	tracer = tracerProvider.Tracer("deepchecks-callback/main")
 
-	tracer = tracerProvider.Tracer("deepchecks-callback") // Is this even used?
 	_, span := tracer.Start(currentContext, "callback lambda starts up")
 	defer span.End()
 

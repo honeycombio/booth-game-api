@@ -22,7 +22,8 @@ const FeatureFlag_SendToDeepchecks = true
 const appName = "Booth Game Quiz"
 const appVersion = "alpha"
 
-var tracer = instrumentation.TracerProvider.Tracer("deepchecks")
+// tracerProvider is initialized in main 
+var tracer = instrumentation.TracerProvider.Tracer("observaquiz-bff/deepchecks")
 
 type DeepChecksAPI struct {
 	ApiKey string

@@ -157,8 +157,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	/* report for analysis */
 	
-	deepchecksAPI := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}
-	interactionReported := deepchecksAPI.ReportInteraction(currentContext, deepchecks.LLMInteractionDescription{
+	interactionReported := deepchecks.DeepChecksAPI{ ApiKey: settings.DeepchecksApiKey}.ReportInteraction(currentContext, deepchecks.LLMInteractionDescription{
 		FullPrompt: fullPrompt,
 		Input:      answer.Answer,
 		Output:     llmResponse,

@@ -25,6 +25,8 @@ const (
 	ServiceName             = "observaquiz-bff"
 )
 
+var tracer oteltrace.Tracer
+
 const LocalTraceLink = true // feature flag, enable locally and turn off in prod ideally
 
 func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
@@ -121,6 +123,7 @@ func main() {
 	currentContext := context.Background()
 
 	tracerProvider := instrumentation.CreateTracerProvider(currentContext, ServiceName)
+	tracer = tracerProvider.Tracer("observaquiz-bff/main")
 
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(RouterWithSpan,
