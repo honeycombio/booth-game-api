@@ -145,17 +145,14 @@ func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context,
 	}
 
 	res, err := httpClient.Do(req)
-
 	if err != nil {
 		span.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure talking to DeepChecks")))
-		// the world does not end
-		return
 	}
 
-	body, err = io.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body) // do this even if there is an error, there might be a message
 	defer res.Body.Close()
-
 	span.SetAttributes(attribute.String("response.body", string(body)))
+
 	return
 }
 

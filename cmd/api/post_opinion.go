@@ -83,7 +83,9 @@ func postOpinion(currentContext context.Context, request events.APIGatewayV2HTTP
 	deepchecksAPI := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}
 	interactionReported := deepchecksAPI.ReportOpinion(currentContext, deepchecks.LLMInteractionOpinionReport{
 		EvaluationId: answer.EvaluationId,
-		Opinion:      deepchecks.Unknown})
+		Opinion:      deepchecks.Unknown,
+		AppVersionId: "1", // TODO: get from question definition. Except we have to use the number here :( :(
+	})
 
 	postOpinionSpan.SetAttributes(attribute.Bool("app.reported", interactionReported.Reported), attribute.Bool("app.success", interactionReported.Success))
 
