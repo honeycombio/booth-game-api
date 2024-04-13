@@ -135,6 +135,15 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 		return InteractionReported{}
 	}
 
+	body := settings.send_to_deepchecks(currentContext, jsonData)
+
+	fmt.Println(string(body))
+	return
+}
+
+func (settings DeepChecksAPI) send_to_deepchecks(currentContext context.Context, jsonData []byte) (body []byte) {
+	span := trace.SpanFromContext(context.Background())
+
 	url := "https://app.llm.deepchecks.com/api/v1/interactions"
 	span.SetAttributes(attribute.String("request.body", string(jsonData)))
 	req, _ := http.NewRequestWithContext(currentContext, "POST", url, bytes.NewBuffer(jsonData))
@@ -143,7 +152,7 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Authorization", "Basic "+ settings.ApiKey)
+	req.Header.Add("Authorization", "Basic "+settings.ApiKey)
 	span.SetAttributes(attribute.String("app.deepchecks.apikey_masked", maskString(settings.ApiKey)))
 
 	httpClient := http.Client{
@@ -158,11 +167,9 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 		return
 	}
 
-	body, _ := io.ReadAll(res.Body)
+	body, _ = io.ReadAll(res.Body)
 	defer res.Body.Close()
 
 	span.SetAttributes(attribute.String("response.body", string(body)))
-
-	fmt.Println(string(body))
 	return
 }
