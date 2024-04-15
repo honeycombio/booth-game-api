@@ -132,38 +132,17 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 		"THEIR ANSWER": answer.Answer,
 		"QUESTION":     questionDefinition.Question,
 	}
-	/* now use that definition to construct a CATEGORY prompt */
-	categoryResult := CategoryResult{}
-	{
-		categoryResponse := chatResult{}
-		err := llmApi.chat(currentContext, answer.Answer, questionDefinition.PromptsV2.CategoryPrompt, substitutions, true, &categoryResponse)
-		if err != nil {
-			return nil, &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
 
-		}
-		span.SetAttributes(attribute.String("app.llm.category_response", categoryResponse.responseContent))
-
-		err = json.Unmarshal([]byte(categoryResponse.responseContent), &categoryResult)
-		if err != nil {
-			return nil, &errorResponseType{message: "Could not parse category response", statusCode: 500}
-		}
-		span.SetAttributes(attribute.String("app.llm.assigned_category", categoryResult.Category))
-	}
-	substitutions["CATEGORY"] = categoryResult.Category
-	/* now the RESPONSE */
 	responseResponse := chatResult{}
-	{
-		err := llmApi.chat(currentContext, answer.Answer, questionDefinition.PromptsV2.ResponsePrompt, substitutions, false, &responseResponse)
-		if err != nil {
-			return nil, &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
-		}
-		span.SetAttributes(attribute.String("app.llm.response", responseResponse.responseContent))
+	err := determineResponse(currentContext, llmApi, questionDefinition, answer, substitutions, &responseResponse)
+	if err != nil {
+		return nil, err
 	}
+	// TODO: run these in parallel
 
 	/* how about the score? */
-	// TODO: run these in parallel
 	scoreOutput := scoreResult{}
-	err := scoreAnswer(currentContext, questionDefinition, answer, substitutions, &scoreOutput)
+	err = scoreAnswer(currentContext, llmApi, questionDefinition, answer, substitutions, &scoreOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +152,36 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 		score:         scoreOutput.score,
 		possibleScore: scoreOutput.possibleScore,
 		evaluationId:  responseResponse.evaluationId}, nil
+}
+
+func determineResponse(currentContext context.Context, llmApi *openaiApi, questionDefinition Question, answer AnswerBody, substitutions map[string]string, output *chatResult) (errorResponse *errorResponseType) {
+	span := trace.SpanFromContext(currentContext)
+	categoryResult := CategoryResult{}
+	{
+		categoryResponse := chatResult{}
+		err := llmApi.chat(currentContext, answer.Answer, questionDefinition.PromptsV2.CategoryPrompt, substitutions, true, &categoryResponse)
+		if err != nil {
+			return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
+
+		}
+		span.SetAttributes(attribute.String("app.llm.category_response", categoryResponse.responseContent))
+
+		err = json.Unmarshal([]byte(categoryResponse.responseContent), &categoryResult)
+		if err != nil {
+			return &errorResponseType{message: "Could not parse category response", statusCode: 500}
+		}
+		span.SetAttributes(attribute.String("app.llm.assigned_category", categoryResult.Category))
+	}
+	substitutions["CATEGORY"] = categoryResult.Category
+	/* now the RESPONSE */
+	{
+		err := llmApi.chat(currentContext, answer.Answer, questionDefinition.PromptsV2.ResponsePrompt, substitutions, false, output)
+		if err != nil {
+			return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
+		}
+		span.SetAttributes(attribute.String("app.llm.response", output.responseContent))
+	}
+	return
 }
 
 type scoreResult struct {
@@ -194,46 +203,74 @@ type ScoreResponse struct {
 	Reasoning  string `json:"reasoning"`
 }
 
-func scoreAnswer(context context.Context, questionDefinition Question, answer AnswerBody, substitutions map[string]string, output *scoreResult) (errorResponse *errorResponseType) {
-	context, span := tracer.Start(context, "score answer")
+func scoreAnswer(currentContext context.Context, llmApi *openaiApi, questionDefinition Question, answer AnswerBody, substitutions map[string]string, output *scoreResult) (errorResponse *errorResponseType) {
+	currentContext, span := tracer.Start(currentContext, "score answer")
 	defer span.End()
 	span.SetAttributes(attribute.String("app.llm.input", answer.Answer))
 
 	var question string = questionDefinition.Question
 	span.SetAttributes(attribute.String("app.post_answer.question", question))
-	llmApi := newOpenaiApi("GPT3Dot5Turbo1106", settings.OpenAIKey)
 
-	scoreComponent := questionDefinition.PromptsV2.ScoringPrompts[0]
+	partialScores := []partialScore{}
 
-	partialScore := partialScore{}
-	{
-		scoreChatResult := chatResult{}
-		err := llmApi.chat(context, answer.Answer, scoreComponent.Prompt, substitutions, true, &scoreChatResult)
-		if err != nil {
-			return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
+	// TODO: run these in parallel
+	for _, scoreComponent := range questionDefinition.PromptsV2.Scoring.ScoringPrompts {
+		promptScore := partialScore{}
+		{
+			scoreChatResult := chatResult{}
+			err := llmApi.chat(currentContext, answer.Answer, scoreComponent.Prompt, substitutions, true, &scoreChatResult)
+			if err != nil {
+				return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
 
+			}
+			span.SetAttributes(attribute.String("app.llm.output", scoreChatResult.responseContent))
+
+			scoreResponse := ScoreResponse{}
+			err = json.Unmarshal([]byte(scoreChatResult.responseContent), &scoreResponse)
+			if err != nil {
+				return &errorResponseType{message: "Could not parse score response", statusCode: 500}
+			}
+			span.SetAttributes(attribute.Int("app.llm.maximum_score", scoreComponent.MaximumScore),
+				attribute.Int("app.llm.score", scoreResponse.Score),
+				attribute.String("app.llm.confidence", scoreResponse.Confidence),
+				attribute.String("app.llm.reasoning", scoreResponse.Reasoning))
+
+			promptScore.possibleScore = scoreComponent.MaximumScore
+			promptScore.score = scoreResponse.Score
+			promptScore.reasoning = scoreResponse.Reasoning
 		}
-		span.SetAttributes(attribute.String("app.llm.output", scoreChatResult.responseContent))
-
-		scoreResponse := ScoreResponse{}
-		err = json.Unmarshal([]byte(scoreChatResult.responseContent), &scoreResponse)
-		if err != nil {
-			return &errorResponseType{message: "Could not parse score response", statusCode: 500}
-		}
-		span.SetAttributes(attribute.Int("app.llm.maximum_score", scoreComponent.MaximumScore),
-			attribute.Int("app.llm.score", scoreResponse.Score),
-			attribute.String("app.llm.confidence", scoreResponse.Confidence),
-			attribute.String("app.llm.reasoning", scoreResponse.Reasoning))
-
-		partialScore.possibleScore = scoreComponent.MaximumScore
-		partialScore.score = scoreResponse.Score
-		partialScore.reasoning = scoreResponse.Reasoning
+		partialScores = append(partialScores, promptScore)
 	}
 
-	output.possibleScore = partialScore.possibleScore
-	output.score = partialScore.score
-	output.parts = append(output.parts, partialScore)
+	pointyWordScore := partialScore{}
+	{
+		_, span := tracer.Start(currentContext, "score pointy words")
+		defer span.End()
+		pointyWords := questionDefinition.PromptsV2.Scoring.PointyWords
+		pointyWordScore.possibleScore = len(pointyWords)
+		for _, word := range pointyWords {
+			if strings.Contains(answer.Answer, word) {
+				pointyWordScore.score++
+			}
+		}
+		span.SetAttributes(attribute.Int("app.llm.pointy_words_score", pointyWordScore.score),
+			attribute.Int("app.llm.pointy_words_possible_score", pointyWordScore.possibleScore))
+	}
+
+	partialScores = append(partialScores, pointyWordScore)
+
+	sumPartialScores(output, partialScores)
 
 	return
 
+}
+
+func sumPartialScores(output *scoreResult, partialScores []partialScore) {
+	output.score = 0
+	output.possibleScore = 0
+	for _, s := range partialScores {
+		output.score += s.score
+		output.possibleScore += s.possibleScore
+	}
+	output.parts = partialScores
 }

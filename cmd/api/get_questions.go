@@ -26,21 +26,26 @@ type QuestionsResponse struct {
 type Question struct {
 	Id                   uuid.UUID            `json:"id"`
 	Question             string               `json:"question"`
-	AnswerResponsePrompt AnswerResponsePrompt `json:"prompt"` // V1 only
+	AnswerResponsePrompt AnswerResponsePrompt `json:"prompt"`  // V1 only
 	PromptsV2            PromptsV2            `json:"prompts"` // V2 only
 	Version              string               `json:"version"`
 }
 
 type PromptsV2 struct {
-	ResponsePrompt string          `json:"response_prompt"`
-	CategoryPrompt string          `json:"category_prompt"`
+	ResponsePrompt string `json:"response_prompt"`
+	CategoryPrompt string `json:"category_prompt"`
+	Scoring        ScoringThings
+}
+
+type ScoringThings struct {
 	ScoringPrompts []ScoringPrompt `json:"scoring_prompts"`
+	PointyWords    []string        `json:"pointy_words"`
 }
 
 type ScoringPrompt struct {
-	Prompt string `json:"prompt"`
-	MaximumScore int `json:"maximum_score"`
-	Description string `json:"description"`
+	Prompt       string `json:"prompt"`
+	MaximumScore int    `json:"maximum_score"`
+	Description  string `json:"description"`
 }
 
 type AnswerResponsePrompt struct {
