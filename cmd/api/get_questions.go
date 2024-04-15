@@ -27,6 +27,7 @@ type Question struct {
 	Id                   uuid.UUID            `json:"id"`
 	Question             string               `json:"question"`
 	AnswerResponsePrompt AnswerResponsePrompt `json:"prompt"`
+	Version              string               `json:"version"`
 }
 
 type AnswerResponsePrompt struct {

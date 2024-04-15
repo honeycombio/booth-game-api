@@ -49,7 +49,7 @@ func parseEvents() map[string][]Question {
 
 			questionsFile, err := eventDirectories.ReadFile(fmt.Sprintf("questions/%v/questions.json", v.Name()))
 			if err != nil {
-				fmt.Printf("Error unmarshalling questions: %v\n", err)
+				fmt.Printf("Error unmarshalling questions yo: %v\n", err)
 				continue
 			}
 

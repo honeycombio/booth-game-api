@@ -92,28 +92,58 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	postQuestionSpan.SetAttributes(attribute.String("app.post_answer.question_id", questionId))
 
 	/* find that question in our question definitions */
-	var question string
-	var openaiMessages []openai.ChatCompletionMessage
-	var promptSpec AnswerResponsePrompt
-	var fullPrompt string
+	var questionDefinition Question
+
 	eventQuestions := eventQuestions[eventName]
 
 	for _, v := range eventQuestions {
 		if v.Id.String() == questionId {
-			promptSpec = v.AnswerResponsePrompt
-			question = v.Question
+			questionDefinition = v
 			break
 		}
 	}
+
+	llmResponse, errorResponse := respondToAnswerV1(currentContext, questionDefinition, answer)
+	if errorResponse != nil {
+		return instrumentation.ErrorResponse(errorResponse.message, errorResponse.statusCode), nil
+	}
+
+	/* tell the UI what we got */
+	result := PostAnswerResponse{Response: llmResponse.response, Score: llmResponse.score, EvaluationId: llmResponse.evaluationId}
+	jsonData, err := json.Marshal(result)
+	if err != nil {
+		postQuestionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
+		return instrumentation.ErrorResponse("wtaf", 500), nil
+	}
+
+	return events.APIGatewayV2HTTPResponse{Body: string(jsonData), StatusCode: 200}, nil
+}
+
+type responseToAnswer struct {
+	response     string
+	score        int
+	evaluationId string
+}
+
+type errorResponseType struct {
+	message    string
+	statusCode int
+}
+
+func respondToAnswerV1(currentContext context.Context, questionDefinition Question, answer AnswerBody) (response *responseToAnswer, errorResponse *errorResponseType) {
+	postQuestionSpan := trace.SpanFromContext(currentContext)
+
+	var question string = questionDefinition.Question
+	var promptSpec AnswerResponsePrompt = questionDefinition.AnswerResponsePrompt
 	if question == "" {
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Couldn't find question"))
 		postQuestionSpan.SetStatus(codes.Error, "Couldn't find question")
-		return instrumentation.ErrorResponse("Couldn't find question with that ID", 404), nil
+		return nil, &errorResponseType{message: "Couldn't find question with that ID", statusCode: 404} // is this right??
 	}
 	postQuestionSpan.SetAttributes(attribute.String("app.post_answer.question", question))
 
 	/* now use that definition to construct a prompt */
-	openaiMessages, fullPrompt = constructPrompt(promptSpec, question, answer.Answer)
+	openaiMessages, fullPrompt := constructPrompt(promptSpec, question, answer.Answer)
 	postQuestionSpan.SetAttributes(attribute.String("app.llm.input", answer.Answer),
 		attribute.String("app.llm.full_prompt", fullPrompt))
 
@@ -148,16 +178,15 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		postQuestionSpan.SetAttributes(attribute.String("error.message", "Failure talking to OpenAI"))
 		postQuestionSpan.SetStatus(codes.Error, err.Error())
 
-		response := instrumentation.ErrorResponse("Could not reach LLM. No fallback in place", 500)
-		return response, nil
+		return nil, &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
 	}
 
 	addLlmResponseAttributesToSpan(postQuestionSpan, openaiChatCompletionResponse)
 	llmResponse := openaiChatCompletionResponse.Choices[0].Message.Content
 
 	/* report for analysis */
-	
-	interactionReported := deepchecks.DeepChecksAPI{ ApiKey: settings.DeepchecksApiKey}.ReportInteraction(currentContext, deepchecks.LLMInteractionDescription{
+
+	interactionReported := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}.ReportInteraction(currentContext, deepchecks.LLMInteractionDescription{
 		FullPrompt: fullPrompt,
 		Input:      answer.Answer,
 		Output:     llmResponse,
@@ -168,16 +197,11 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 	// try to unmarshal the response as JSON and get a score and a response. Otherwise, fall back to treating it as a string and defaulting the score
 
 	parsedLlmResponse, err := parseLLMResponse(currentContext, llmResponse)
-
-	/* tell the UI what we got */
-	result := PostAnswerResponse{Response: parsedLlmResponse.Response, Score: parsedLlmResponse.Score, EvaluationId: interactionReported.EvaluationId}
-	jsonData, err := json.Marshal(result)
-	if err != nil {
-		postQuestionSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
-		return instrumentation.ErrorResponse("wtaf", 500), nil
+	if (err != nil) {
+       return nil, &errorResponseType{message: "Could not parse LLM response", statusCode: 500}
 	}
 
-	return events.APIGatewayV2HTTPResponse{Body: string(jsonData), StatusCode: 200}, nil
+	return &responseToAnswer{response: parsedLlmResponse.Response, score: parsedLlmResponse.Score, evaluationId: interactionReported.EvaluationId}, nil
 }
 
 type LlmResponse struct {
@@ -204,8 +228,8 @@ func parseLLMResponse(currentContext context.Context, llmResponse string) (respo
 }
 
 type PostAnswerResponse struct {
-	Response string `json:"response"`
-	Score    int    `json:"score"`
+	Response     string `json:"response"`
+	Score        int    `json:"score"`
 	EvaluationId string `json:"evaluation_id"`
 }
 
