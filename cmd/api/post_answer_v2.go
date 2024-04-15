@@ -219,52 +219,62 @@ func scoreAnswer(currentContext context.Context, llmApi *openaiApi, questionDefi
 	span.SetAttributes(attribute.String("app.llm.input", answer.Answer))
 
 	var question string = questionDefinition.Question
-	span.SetAttributes(attribute.String("app.post_answer.question", question))
-
-	partialScores := []partialScore{}
+	span.SetAttributes(attribute.String("app.score.question", question),
+		attribute.String("app.score.answer", answer.Answer),
+		attribute.Int("app.score.prompts_qty", len(questionDefinition.Scoring.ScoringPrompts)))
 
 	// TODO: run these in parallel
-	for _, scoreComponent := range questionDefinition.PromptsV2.Scoring.ScoringPrompts {
-		promptScore := partialScore{}
-		{
+
+	partialScores := []partialScore{}
+	errList := []errorResponseType{}
+	var wg conc.WaitGroup
+
+	for _, scoreComponent := range questionDefinition.Scoring.ScoringPrompts {
+		wg.Go(func() {
+			promptScore := partialScore{}
+			currentContext, span := tracer.Start(currentContext, "score with llm")
+			defer span.End()
 			scoreChatResult := chatResult{}
 			err := llmApi.chat(currentContext, answer.Answer, scoreComponent.Prompt, substitutions, true, &scoreChatResult)
 			if err != nil {
-				return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
-
+				errList = append(errList, errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500})
+				return
 			}
 			span.SetAttributes(attribute.String("app.llm.output", scoreChatResult.responseContent))
 
 			scoreResponse := ScoreResponse{}
 			err = json.Unmarshal([]byte(scoreChatResult.responseContent), &scoreResponse)
 			if err != nil {
-				return &errorResponseType{message: "Could not parse score response", statusCode: 500}
+				errList = append(errList, errorResponseType{message: "Could not parse score response", statusCode: 500})
+				return
 			}
-			span.SetAttributes(attribute.Int("app.llm.maximum_score", scoreComponent.MaximumScore),
-				attribute.Int("app.llm.score", scoreResponse.Score),
+			span.SetAttributes(attribute.Int("app.score.maximum_score", scoreComponent.MaximumScore),
+				attribute.Int("app.score.score", scoreResponse.Score),
 				attribute.String("app.llm.confidence", scoreResponse.Confidence),
 				attribute.String("app.llm.reasoning", scoreResponse.Reasoning))
 
 			promptScore.possibleScore = scoreComponent.MaximumScore
 			promptScore.score = scoreResponse.Score
 			promptScore.reasoning = scoreResponse.Reasoning
-		}
-		partialScores = append(partialScores, promptScore)
+			partialScores = append(partialScores, promptScore) // is append threadSafe??
+		})
 	}
+	wg.Wait()
 
 	pointyWordScore := partialScore{}
 	{
 		_, span := tracer.Start(currentContext, "score pointy words")
 		defer span.End()
-		pointyWords := questionDefinition.PromptsV2.Scoring.PointyWords
+		pointyWords := questionDefinition.Scoring.PointyWords
 		pointyWordScore.possibleScore = len(pointyWords)
 		for _, word := range pointyWords {
 			if strings.Contains(answer.Answer, word) {
 				pointyWordScore.score++
 			}
 		}
-		span.SetAttributes(attribute.Int("app.llm.pointy_words_score", pointyWordScore.score),
-			attribute.Int("app.llm.pointy_words_possible_score", pointyWordScore.possibleScore))
+		span.SetAttributes(attribute.Int("app.score.score", pointyWordScore.score),
+			attribute.Int("app.score.possible_score", pointyWordScore.possibleScore),
+			attribute.String("app.llm.answer", answer.Answer))
 	}
 
 	partialScores = append(partialScores, pointyWordScore)
