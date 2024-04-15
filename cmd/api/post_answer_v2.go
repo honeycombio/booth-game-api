@@ -38,19 +38,22 @@ type chatResult struct {
 	evaluationId    string
 }
 
-func (api openaiApi) chat(context context.Context, theirAnswer string, prompt string, wantsJson bool, output *chatResult) (err error) {
-	context, span := tracer.Start(context, "chat with AI")
+func (api openaiApi) chat(currentContext context.Context, theirAnswer string, promptTemplate string, replacements map[string]string, wantsJson bool, output *chatResult) (err error) {
+	currentContext, span := tracer.Start(currentContext, "chat with AI")
 	defer span.End()
 	span.SetAttributes(attribute.String("app.llm.model", api.model),
 		attribute.String("app.llm.input", theirAnswer),
-		attribute.String("app.llm.prompt", prompt),
+		attribute.String("app.llm.prompt_template", promptTemplate),
 		attribute.Bool("app.llm.wantsJson", wantsJson),
 	)
 
 	startTime := time.Now()
 	model := openai.GPT3Dot5Turbo1106
 
-	var responseType openai.ChatCompletionResponseFormatType // go is trash
+	prompt := replaceInString(currentContext, promptTemplate, replacements)
+	span.SetAttributes(attribute.String("app.llm.prompt", prompt))
+
+	var responseType openai.ChatCompletionResponseFormatType // boo, get a real ternary operator golang
 	if wantsJson {
 		responseType = openai.ChatCompletionResponseFormatTypeJSONObject
 	} else {
@@ -61,7 +64,7 @@ func (api openaiApi) chat(context context.Context, theirAnswer string, prompt st
 	openaiMessage := openai.ChatCompletionMessage{Role: "system", Content: prompt}
 
 	openaiChatCompletionResponse, err := api.client.CreateChatCompletion(
-		context,
+		currentContext,
 		openai.ChatCompletionRequest{
 			ResponseFormat: &openai.ChatCompletionResponseFormat{
 				Type: responseType,
@@ -86,7 +89,7 @@ func (api openaiApi) chat(context context.Context, theirAnswer string, prompt st
 
 	/* report for analysis */
 
-	interactionReported := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}.ReportInteraction(context, deepchecks.LLMInteractionDescription{
+	interactionReported := deepchecks.DeepChecksAPI{ApiKey: settings.DeepchecksApiKey}.ReportInteraction(currentContext, deepchecks.LLMInteractionDescription{
 		FullPrompt: prompt,
 		Input:      theirAnswer,
 		Output:     llmResponse,
@@ -107,8 +110,11 @@ type CategoryResult struct {
 	Reasoning  string `json:"reasoning"`
 }
 
-func replaceInString(str string, replacements map[string]string) string {
+func replaceInString(currentContext context.Context, str string, replacements map[string]string) string {
+	span := trace.SpanFromContext(currentContext)
+	span.SetAttributes(attribute.Int("app.replace.replacements_qty", len(replacements)))
 	for k, v := range replacements {
+		span.SetAttributes(attribute.String("app.replace.replacement."+k, v))
 		str = strings.Replace(str, k, v, -1)
 	}
 	return str
@@ -116,20 +122,21 @@ func replaceInString(str string, replacements map[string]string) string {
 
 func respondToAnswerV2(currentContext context.Context, questionDefinition Question, answer AnswerBody) (response *responseToAnswer, errorResponse *errorResponseType) {
 	span := trace.SpanFromContext(currentContext)
+	span.SetAttributes(attribute.String("app.llm.input", answer.Answer))
 
 	var question string = questionDefinition.Question
 	span.SetAttributes(attribute.String("app.post_answer.question", question))
 	llmApi := newOpenaiApi("GPT3Dot5Turbo1106", settings.OpenAIKey)
 
+	substitutions := map[string]string{
+		"THEIR ANSWER": answer.Answer,
+		"QUESTION":     questionDefinition.Question,
+	}
 	/* now use that definition to construct a CATEGORY prompt */
 	categoryResult := CategoryResult{}
 	{
-		categoryPrompt := replaceInString(questionDefinition.PromptsV2.CategoryPrompt, map[string]string{"THEIR_ANSWER": answer.Answer, "QUESTION": questionDefinition.Question})
-		span.SetAttributes(attribute.String("app.llm.input", answer.Answer),
-			attribute.String("app.llm.category_prompt", categoryPrompt))
-
 		categoryResponse := chatResult{}
-		err := llmApi.chat(currentContext, answer.Answer, categoryPrompt, true, &categoryResponse)
+		err := llmApi.chat(currentContext, answer.Answer, questionDefinition.PromptsV2.CategoryPrompt, substitutions, true, &categoryResponse)
 		if err != nil {
 			return nil, &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
 
@@ -142,21 +149,13 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 		}
 		span.SetAttributes(attribute.String("app.llm.assigned_category", categoryResult.Category))
 	}
-
+	substitutions["CATEGORY"] = categoryResult.Category
 	/* now the RESPONSE */
 	responseResponse := chatResult{}
 	{
-		responsePrompt := replaceInString(questionDefinition.PromptsV2.ResponsePrompt, map[string]string{
-			"THEIR_ANSWER": answer.Answer,
-			"QUESTION":     questionDefinition.Question,
-			"CATEGORY":     categoryResult.Category})
-		span.SetAttributes(attribute.String("app.llm.input", answer.Answer),
-			attribute.String("app.llm.response_prompt", responsePrompt))
-
-		err := llmApi.chat(currentContext, answer.Answer, responsePrompt, false, &responseResponse)
+		err := llmApi.chat(currentContext, answer.Answer, questionDefinition.PromptsV2.ResponsePrompt, substitutions, false, &responseResponse)
 		if err != nil {
 			return nil, &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
-
 		}
 		span.SetAttributes(attribute.String("app.llm.response", responseResponse.responseContent))
 	}
@@ -164,7 +163,7 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 	/* how about the score? */
 	// TODO: run these in parallel
 	scoreOutput := scoreResult{}
-	err := scoreAnswer(currentContext, questionDefinition, answer, &scoreOutput)
+	err := scoreAnswer(currentContext, questionDefinition, answer, substitutions, &scoreOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -195,9 +194,10 @@ type ScoreResponse struct {
 	Reasoning  string `json:"reasoning"`
 }
 
-func scoreAnswer(context context.Context, questionDefinition Question, answer AnswerBody, output *scoreResult) (errorResponse *errorResponseType) {
+func scoreAnswer(context context.Context, questionDefinition Question, answer AnswerBody, substitutions map[string]string, output *scoreResult) (errorResponse *errorResponseType) {
 	context, span := tracer.Start(context, "score answer")
 	defer span.End()
+	span.SetAttributes(attribute.String("app.llm.input", answer.Answer))
 
 	var question string = questionDefinition.Question
 	span.SetAttributes(attribute.String("app.post_answer.question", question))
@@ -207,12 +207,8 @@ func scoreAnswer(context context.Context, questionDefinition Question, answer An
 
 	partialScore := partialScore{}
 	{
-		scorePrompt := replaceInString(scoreComponent.Prompt, map[string]string{"THEIR_ANSWER": answer.Answer, "QUESTION": questionDefinition.Question})
-		span.SetAttributes(attribute.String("app.llm.input", answer.Answer),
-			attribute.String("app.llm.score_prompt", scorePrompt))
-
 		scoreChatResult := chatResult{}
-		err := llmApi.chat(context, answer.Answer, scorePrompt, true, &scoreChatResult)
+		err := llmApi.chat(context, answer.Answer, scoreComponent.Prompt, substitutions, true, &scoreChatResult)
 		if err != nil {
 			return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
 

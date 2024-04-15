@@ -122,7 +122,7 @@ func (settings DeepChecksAPI) ReportInteraction(currentContext context.Context, 
 
 	body, _ := settings.send_to_deepchecks(currentContext, "POST", "interactions", jsonData)
 
-	fmt.Println(string(body))
+	span.SetAttributes(attribute.String("app.deepchecks.response.body", string(body)))
 	return
 }
 
