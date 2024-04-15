@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/sourcegraph/conc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -134,17 +135,26 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 	}
 
 	responseResponse := chatResult{}
-	err := determineResponse(currentContext, llmApi, questionDefinition, answer, substitutions, &responseResponse)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: run these in parallel
-
-	/* how about the score? */
 	scoreOutput := scoreResult{}
-	err = scoreAnswer(currentContext, llmApi, questionDefinition, answer, substitutions, &scoreOutput)
-	if err != nil {
-		return nil, err
+	errList := []errorResponseType{}
+	var wg conc.WaitGroup
+	wg.Go(func() {
+		err := determineResponse(currentContext, llmApi, questionDefinition, answer, substitutions, &responseResponse)
+		if err != nil {
+			errList = append(errList, *err)
+		}
+	})
+	wg.Go(func() {
+		err := scoreAnswer(currentContext, llmApi, questionDefinition, answer, substitutions, &scoreOutput)
+		if err != nil {
+			errList = append(errList, *err)
+		}
+	})
+	wg.Wait()
+
+	if len(errList) != 0 {
+		// TODO: put a span event for each, or soemthing
+		return nil, &errList[0]
 	}
 
 	return &responseToAnswer{
