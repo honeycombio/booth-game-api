@@ -40,9 +40,9 @@ type Opinion string
 
 var opinionToAnnotation = map[Opinion]deepchecks.Annotation{
 	"whoa": deepchecks.Good,
-	"meh":  deepchecks.Bad,
-	"ok":   deepchecks.Unknown,
-	"yeah": deepchecks.Good,
+	"meh":  deepchecks.Unknown, // should I call this bad?
+	"boo":   deepchecks.Bad,
+	"great": deepchecks.Good,
 	// Add more mappings here
 }
 
