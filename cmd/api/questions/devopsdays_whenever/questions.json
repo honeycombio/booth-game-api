@@ -68,14 +68,5 @@
         }
       ]
     }
-  },
-  {
-    "question": "How do you find out what is happening in your production software? What could make it easier to really know?",
-    "id": "12345678-5146-4099-af21-ebcd104187e1",
-    "version": "v2",
-    "prompt": {
-      "system": "don't use this",
-      "examples": []
-    }
   }
 ]
