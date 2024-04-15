@@ -41,6 +41,12 @@ type chatResult struct {
 func (api openaiApi) chat(context context.Context, theirAnswer string, prompt string, wantsJson bool, output *chatResult) (err error) {
 	context, span := tracer.Start(context, "chat with AI")
 	defer span.End()
+	span.SetAttributes(attribute.String("app.llm.model", api.model),
+		attribute.String("app.llm.input", theirAnswer),
+		attribute.String("app.llm.prompt", prompt),
+		attribute.Bool("app.llm.wantsJson", wantsJson),
+	)
+
 	startTime := time.Now()
 	model := openai.GPT3Dot5Turbo1106
 
@@ -50,8 +56,8 @@ func (api openaiApi) chat(context context.Context, theirAnswer string, prompt st
 	} else {
 		responseType = openai.ChatCompletionResponseFormatTypeText
 	}
-
 	span.SetAttributes(attribute.String("app.llm.responseType", fmt.Sprintf("%v", responseType)))
+
 	openaiMessage := openai.ChatCompletionMessage{Role: "system", Content: prompt}
 
 	openaiChatCompletionResponse, err := api.client.CreateChatCompletion(
@@ -140,7 +146,7 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 	/* now the RESPONSE */
 	responseResponse := chatResult{}
 	{
-		responsePrompt := replaceInString(questionDefinition.PromptsV2.CategoryPrompt, map[string]string{
+		responsePrompt := replaceInString(questionDefinition.PromptsV2.ResponsePrompt, map[string]string{
 			"THEIR_ANSWER": answer.Answer,
 			"QUESTION":     questionDefinition.Question,
 			"CATEGORY":     categoryResult.Category})
