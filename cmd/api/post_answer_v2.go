@@ -161,5 +161,83 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 		span.SetAttributes(attribute.String("app.llm.response", responseResponse.responseContent))
 	}
 
-	return &responseToAnswer{response: responseResponse.responseContent, score: 10, evaluationId: responseResponse.evaluationId}, nil
+	/* how about the score? */
+	// TODO: run these in parallel
+	scoreOutput := scoreResult{}
+	err := scoreAnswer(currentContext, questionDefinition, answer, &scoreOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseToAnswer{
+		response:      responseResponse.responseContent,
+		score:         scoreOutput.score,
+		possibleScore: scoreOutput.possibleScore,
+		evaluationId:  responseResponse.evaluationId}, nil
+}
+
+type scoreResult struct {
+	possibleScore int
+	score         int
+	parts         []partialScore
+}
+
+type partialScore struct {
+	possibleScore int
+	score         int
+	reasoning     string
+}
+
+// { "score": 0-20, "confidence": "string describing your confidence in your answer", "reasoning": "Why you gave the score you did"}
+type ScoreResponse struct {
+	Score      int    `json:"score"`
+	Confidence string `json:"confidence"`
+	Reasoning  string `json:"reasoning"`
+}
+
+func scoreAnswer(context context.Context, questionDefinition Question, answer AnswerBody, output *scoreResult) (errorResponse *errorResponseType) {
+	context, span := tracer.Start(context, "score answer")
+	defer span.End()
+
+	var question string = questionDefinition.Question
+	span.SetAttributes(attribute.String("app.post_answer.question", question))
+	llmApi := newOpenaiApi("GPT3Dot5Turbo1106", settings.OpenAIKey)
+
+	scoreComponent := questionDefinition.PromptsV2.ScoringPrompts[0]
+
+	partialScore := partialScore{}
+	{
+		scorePrompt := replaceInString(scoreComponent.Prompt, map[string]string{"THEIR_ANSWER": answer.Answer, "QUESTION": questionDefinition.Question})
+		span.SetAttributes(attribute.String("app.llm.input", answer.Answer),
+			attribute.String("app.llm.score_prompt", scorePrompt))
+
+		scoreChatResult := chatResult{}
+		err := llmApi.chat(context, answer.Answer, scorePrompt, true, &scoreChatResult)
+		if err != nil {
+			return &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
+
+		}
+		span.SetAttributes(attribute.String("app.llm.output", scoreChatResult.responseContent))
+
+		scoreResponse := ScoreResponse{}
+		err = json.Unmarshal([]byte(scoreChatResult.responseContent), &scoreResponse)
+		if err != nil {
+			return &errorResponseType{message: "Could not parse score response", statusCode: 500}
+		}
+		span.SetAttributes(attribute.Int("app.llm.maximum_score", scoreComponent.MaximumScore),
+			attribute.Int("app.llm.score", scoreResponse.Score),
+			attribute.String("app.llm.confidence", scoreResponse.Confidence),
+			attribute.String("app.llm.reasoning", scoreResponse.Reasoning))
+
+		partialScore.possibleScore = scoreComponent.MaximumScore
+		partialScore.score = scoreResponse.Score
+		partialScore.reasoning = scoreResponse.Reasoning
+	}
+
+	output.possibleScore = partialScore.possibleScore
+	output.score = partialScore.score
+	output.parts = append(output.parts, partialScore)
+
+	return
+
 }

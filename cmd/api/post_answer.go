@@ -134,9 +134,10 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 }
 
 type responseToAnswer struct {
-	response     string
-	score        int
-	evaluationId string
+	response      string
+	score         int
+	possibleScore int
+	evaluationId  string
 }
 
 type errorResponseType struct {
@@ -210,7 +211,7 @@ func respondToAnswerV1(currentContext context.Context, questionDefinition Questi
 		return nil, &errorResponseType{message: "Could not parse LLM response", statusCode: 500}
 	}
 
-	return &responseToAnswer{response: parsedLlmResponse.Response, score: parsedLlmResponse.Score, evaluationId: interactionReported.EvaluationId}, nil
+	return &responseToAnswer{response: parsedLlmResponse.Response, score: parsedLlmResponse.Score, evaluationId: interactionReported.EvaluationId, possibleScore: 100}, nil
 }
 
 type LlmResponse struct {
