@@ -32,9 +32,9 @@ type Question struct {
 }
 
 type PromptsV2 struct {
-	ResponsePrompt string `json:"response_prompt"`
-	CategoryPrompt string `json:"category_prompt"`
-	Scoring        ScoringThings
+	ResponsePrompt string        `json:"response_prompt"`
+	CategoryPrompt string        `json:"category_prompt"`
+	Scoring        ScoringThings `json:"scoring"`
 }
 
 type ScoringThings struct {
