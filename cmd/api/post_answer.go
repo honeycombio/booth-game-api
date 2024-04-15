@@ -103,7 +103,21 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		}
 	}
 
-	llmResponse, errorResponse := respondToAnswerV1(currentContext, questionDefinition, answer)
+	if questionDefinition.Version == "" {
+		postQuestionSpan.SetAttributes(attribute.String("error.message", "Couldn't find question"))
+		postQuestionSpan.SetStatus(codes.Error, "Couldn't find question")
+		return instrumentation.ErrorResponse("Couldn't find question with that ID", 404), nil
+	}
+
+	var llmResponse *responseToAnswer // why is this a pointer. Because I wanted to pass nil in case of error.
+	var errorResponse *errorResponseType
+
+	if questionDefinition.Version == "v1" {
+		llmResponse, errorResponse = respondToAnswerV1(currentContext, questionDefinition, answer)
+
+	} else if questionDefinition.Version == "v2" {
+		llmResponse, errorResponse = respondToAnswerV2(currentContext, questionDefinition, answer)
+	}
 	if errorResponse != nil {
 		return instrumentation.ErrorResponse(errorResponse.message, errorResponse.statusCode), nil
 	}
@@ -135,11 +149,6 @@ func respondToAnswerV1(currentContext context.Context, questionDefinition Questi
 
 	var question string = questionDefinition.Question
 	var promptSpec AnswerResponsePrompt = questionDefinition.AnswerResponsePrompt
-	if question == "" {
-		postQuestionSpan.SetAttributes(attribute.String("error.message", "Couldn't find question"))
-		postQuestionSpan.SetStatus(codes.Error, "Couldn't find question")
-		return nil, &errorResponseType{message: "Couldn't find question with that ID", statusCode: 404} // is this right??
-	}
 	postQuestionSpan.SetAttributes(attribute.String("app.post_answer.question", question))
 
 	/* now use that definition to construct a prompt */
@@ -197,8 +206,8 @@ func respondToAnswerV1(currentContext context.Context, questionDefinition Questi
 	// try to unmarshal the response as JSON and get a score and a response. Otherwise, fall back to treating it as a string and defaulting the score
 
 	parsedLlmResponse, err := parseLLMResponse(currentContext, llmResponse)
-	if (err != nil) {
-       return nil, &errorResponseType{message: "Could not parse LLM response", statusCode: 500}
+	if err != nil {
+		return nil, &errorResponseType{message: "Could not parse LLM response", statusCode: 500}
 	}
 
 	return &responseToAnswer{response: parsedLlmResponse.Response, score: parsedLlmResponse.Score, evaluationId: interactionReported.EvaluationId}, nil
