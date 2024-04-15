@@ -74,7 +74,7 @@ metrics, log, dashboards, OpenTelemetry (+5), traces/tracing/trace, APM, Splunk,
 Limited observability: they have incomplete logs or metrics
 Observability 1.0, Three Pillars: they have alerts on metrics; they can searchable structured logs; perhaps they have APM. They might have 
 Observability 2.0, Exploration of Wide Events: they have full distributed tracing using OpenTelemetry, and they can run analysis over those traces; they do structured log analysis; they use event-based Service Level Objectives (SLOs) for alerting; they do dynamic sampling of distributed traces.
-Observability 1.5, : they have some characteristics of 2.0 but not all of them. Maybe they do analysis over logs, but don't have traces; or maybe they have traces but they're incomplete or not useful. Maybe they have OpenTelemetry but only use it for metrics.
+Observability 1.5, On The Path: they have some characteristics of 2.0 but not all of them. Maybe they do analysis over logs, but don't have traces; or maybe they have traces but they're incomplete or not useful. Maybe they have OpenTelemetry but only use it for metrics.
 Other: they did not describe their software observability.
 
 ### Score for ideas

@@ -14,14 +14,14 @@ X-Observaquiz-Execution-Id: 1234
 
 ### 
 
-# what is the difference btwn apm and o11y
-POST {{hostname}}/api/questions/b1f659dc-a832-46ed-8fd1-437a4cb34d0d/answer
+# V2 question
+POST {{hostname}}/api/questions/8763ed79-6deb-4b90-8ca5-f4bc86458d1a/answer
 X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
 X-Observaquiz-Execution-Id: 1234
 Content-Type: application/json 
 
 {
-    "answer": "Observability is a superset of monitoring, and is a way of thinking about systems that emphasizes the ability to understand what is happening inside a system from the outside."
+    "answer": "i dunno, we have logs and dashboards, i like the dashboards they're pretty"
 }
 
 ### what do you get from great o11y
