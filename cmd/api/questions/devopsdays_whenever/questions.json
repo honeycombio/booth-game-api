@@ -38,13 +38,17 @@
         "read code",
         "Honeycomb",
         "New Relic",
+        "Sentry",
         "events",
         "events",
         "cardinality",
         "dimensions",
         "wide",
         "observability",
-        "APM"
+        "APM",
+        "systems",
+        "alerts",
+        "SLOs"
       ]
     }
   },
