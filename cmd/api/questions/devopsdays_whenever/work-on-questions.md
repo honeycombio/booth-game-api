@@ -1,3 +1,5 @@
+https://colab.research.google.com/drive/1OeQHuV6Zj74qJOpHdds77abDcm_ydvpp#scrollTo=teL41cKZSxND
+
 # Let's brainstorm some questions.
 
 * How do you know what's going on in your software systems? How could that be better?

@@ -101,6 +101,13 @@ type CategoryResult struct {
 	Reasoning  string `json:"reasoning"`
 }
 
+func replaceInString(str string, replacements map[string]string) string {
+	for k, v := range replacements {
+		str = strings.Replace(str, k, v, -1)
+	}
+	return str
+}
+
 func respondToAnswerV2(currentContext context.Context, questionDefinition Question, answer AnswerBody) (response *responseToAnswer, errorResponse *errorResponseType) {
 	span := trace.SpanFromContext(currentContext)
 
@@ -109,8 +116,9 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 	llmApi := newOpenaiApi("GPT3Dot5Turbo1106", settings.OpenAIKey)
 
 	/* now use that definition to construct a CATEGORY prompt */
+	categoryResult := CategoryResult{}
 	{
-		categoryPrompt := strings.Replace(questionDefinition.PromptsV2.CategoryPrompt, "THEIR_ANSWER", answer.Answer, -1)
+		categoryPrompt := replaceInString(questionDefinition.PromptsV2.CategoryPrompt, map[string]string{"THEIR_ANSWER": answer.Answer, "QUESTION": questionDefinition.Question})
 		span.SetAttributes(attribute.String("app.llm.input", answer.Answer),
 			attribute.String("app.llm.category_prompt", categoryPrompt))
 
@@ -122,7 +130,6 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 		}
 		span.SetAttributes(attribute.String("app.llm.category_response", categoryResponse.responseContent))
 
-		categoryResult := CategoryResult{}
 		err = json.Unmarshal([]byte(categoryResponse.responseContent), &categoryResult)
 		if err != nil {
 			return nil, &errorResponseType{message: "Could not parse category response", statusCode: 500}
@@ -133,7 +140,10 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 	/* now the RESPONSE */
 	responseResponse := chatResult{}
 	{
-		responsePrompt := strings.Replace(questionDefinition.PromptsV2.ResponsePrompt, "THEIR_ANSWER", answer.Answer, -1) // TODO: replace CATEGORY with categoryResult.Category
+		responsePrompt := replaceInString(questionDefinition.PromptsV2.CategoryPrompt, map[string]string{
+			"THEIR_ANSWER": answer.Answer,
+			"QUESTION":     questionDefinition.Question,
+			"CATEGORY":     categoryResult.Category})
 		span.SetAttributes(attribute.String("app.llm.input", answer.Answer),
 			attribute.String("app.llm.response_prompt", responsePrompt))
 
@@ -142,7 +152,7 @@ func respondToAnswerV2(currentContext context.Context, questionDefinition Questi
 			return nil, &errorResponseType{message: "Could not reach LLM. No fallback in place", statusCode: 500}
 
 		}
-		span.SetAttributes(attribute.String("app.llm.category_response", responseResponse.responseContent))
+		span.SetAttributes(attribute.String("app.llm.response", responseResponse.responseContent))
 	}
 
 	return &responseToAnswer{response: responseResponse.responseContent, score: 10, evaluationId: responseResponse.evaluationId}, nil
