@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -122,7 +124,27 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 		return instrumentation.ErrorResponse(errorResponse.message, errorResponse.statusCode), nil
 	}
 
+	sdkConfig := currentContext.Value(SDK_CONFIG_KEY).(aws.Config)
+
 	/* tell the UI what we got */
+	resultsTable := ResultTable{
+		TableName:      settings.ResultsTableName,
+		DynamoDbClient: dynamodb.NewFromConfig(sdkConfig),
+	}
+
+	headerInfo := getHeaderInfo(request)
+
+	questionResult := Result{
+		EventName:  eventName,
+		QuizRunId:  headerInfo.ExecutionId,
+		QuestionId: questionId,
+		Answer:     answer.Answer,
+		TraceId:    postQuestionSpan.SpanContext().TraceID().String(),
+		Score:      llmResponse.score,
+	}
+
+	resultsTable.AddResult(questionResult)
+
 	result := PostAnswerResponse{Response: llmResponse.response, Score: llmResponse.score, PossibleScore: llmResponse.possibleScore, EvaluationId: llmResponse.evaluationId}
 	jsonData, err := json.Marshal(result)
 	if err != nil {
