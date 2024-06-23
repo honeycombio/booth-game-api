@@ -29,6 +29,7 @@ Resources:
           query_data_api_key:
           deepchecks_api_key:
           use_local_stack: true
+          results_table: results-table
 
   CALLBACK:
     Type: AWS::Serverless::Function 
