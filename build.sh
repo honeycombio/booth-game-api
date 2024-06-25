@@ -8,4 +8,5 @@ echo "Building regular api..."
 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ./dist/api cmd/api/*.go
 echo "building deepchecks callback..."
 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ./dist/deepchecks_callback cmd/deepchecks_callback/*.go
-
+echo "building result calculator..."
+GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o ./dist/result_calculator cmd/result_calculator/*.go

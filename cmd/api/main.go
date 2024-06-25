@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"observaquiz_lambda/cmd/api/results"
 	"observaquiz_lambda/pkg/instrumentation"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/jessevdk/go-flags"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/otel"
@@ -34,6 +37,8 @@ var SDK_CONFIG_KEY sdkConfigKey = "sdkConfig"
 var tracer oteltrace.Tracer
 
 const LocalTraceLink = true // feature flag, enable locally and turn off in prod ideally
+
+var resultsTable results.ResultTable
 
 func RouterWithSpan(currentContext context.Context, request events.APIGatewayV2HTTPRequest) (response events.APIGatewayV2HTTPResponse, err error) {
 	currentContext, cleanup := context.WithTimeout(currentContext, 30*time.Second)
@@ -112,25 +117,29 @@ type HeaderInfo struct {
 }
 
 func getHeaderInfo(request events.APIGatewayV2HTTPRequest) HeaderInfo {
-	attendeeApiKey := request.Headers[ATTENDEE_API_KEY_HEADER]
-	executionId := request.Headers[EXECUTION_ID_HEADER]
+	var executionId string
+	var attendeeApiKey string
+	for k, v := range request.Headers {
+		lowerKey := strings.ToLower(k)
+		if lowerKey == ATTENDEE_API_KEY_HEADER {
+			attendeeApiKey = v
+		} else if lowerKey == EXECUTION_ID_HEADER {
+			executionId = v
+		}
+	}
 	return HeaderInfo{AttendeeApiKey: attendeeApiKey, ExecutionId: executionId}
 }
 
 var settings struct {
-	OpenAIKey        string `env:"openai_key"`
-	QueryDataApiKey  string `env:"query_data_api_key"`
-	DeepchecksApiKey string `env:"deepchecks_api_key"`
-	ResultsTableName string `env:"results_table_name"`
-	UseLocalStack    bool   `env:"use_local_stack"`
+	OpenAIKey        string `env:"openai_key" short:"o"`
+	QueryDataApiKey  string `env:"query_data_api_key" short:"q"`
+	DeepchecksApiKey string `env:"deepchecks_api_key" short:"d"`
+	ResultsTableName string `env:"results_table_name" short:"r"`
+	UseLocalStack    bool   `env:"use_local_stack" short:"l" default:"false"`
 }
 
 func main() {
 	flags.Parse(&settings)
-	// print all the environment variables to the console
-	settings.OpenAIKey = os.Getenv("openai_key")
-	settings.QueryDataApiKey = os.Getenv("query_data_api_key") // whatever, if it works
-	settings.DeepchecksApiKey = os.Getenv("deepchecks_api_key")
 	currentContext := context.Background()
 
 	tracerProvider := instrumentation.CreateTracerProvider(currentContext, ServiceName)
@@ -148,6 +157,8 @@ func main() {
 	}
 	currentContext = context.WithValue(currentContext, SDK_CONFIG_KEY, sdkConfig)
 
+	resultsTable = results.NewResultTable(settings.ResultsTableName, getDynamoDbClient(currentContext))
+
 	lambda.StartWithOptions(
 		otellambda.InstrumentHandler(RouterWithSpan,
 			otellambda.WithFlusher(tracerProvider),
@@ -157,27 +168,18 @@ func main() {
 }
 
 func getLocalStackConfig() aws.Config {
-
-	awsEndpoint := "http://localstack:4566"
-	awsRegion := "us-east-1"
-
-	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		if awsEndpoint != "" {
-			return aws.Endpoint{
-				PartitionID:   "aws",
-				URL:           awsEndpoint,
-				SigningRegion: awsRegion,
-			}, nil
-		}
-
-		// returning EndpointNotFoundError will allow the service to fallback to its default resolution
-		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-	})
-
 	awsCfg, _ := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(awsRegion),
-		config.WithEndpointResolverWithOptions(customResolver),
+		config.WithRegion("us-east-1"),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
 	)
 
 	return awsCfg
+}
+
+func getDynamoDbClient(currentContext context.Context) *dynamodb.Client {
+	sdkConfig := currentContext.Value(SDK_CONFIG_KEY).(aws.Config)
+	return dynamodb.NewFromConfig(sdkConfig, func(o *dynamodb.Options) {
+		o.Region = "us-east-1"
+		o.BaseEndpoint = aws.String("http://localstack:4566")
+	})
 }

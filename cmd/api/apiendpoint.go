@@ -16,6 +16,8 @@ var api = ApiHolder{
 		postAnswerEndpoint,
 		queryDataEndpoint,
 		postOpinionEndpoint,
+		getExecutionResultEndpoint,
+		getEventResultEndpoint,
 	},
 }
 

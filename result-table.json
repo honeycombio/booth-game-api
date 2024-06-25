@@ -1,0 +1,71 @@
+{
+    "AttributeDefinitions": [
+        {
+            "AttributeName": "quiz_run_id",
+            "AttributeType": "S"
+        },
+        {
+            "AttributeName": "event_name",
+            "AttributeType": "S"
+        },
+        {
+            "AttributeName": "type",
+            "AttributeType": "S"
+        },
+        {
+            "AttributeName": "total_score",
+            "AttributeType": "N"
+        }
+    ],
+    "TableName": "results-table",
+    "KeySchema": [
+        {
+            "AttributeName": "quiz_run_id",
+            "KeyType": "HASH"
+        },
+        {
+            "AttributeName": "type",
+            "KeyType": "RANGE"
+        }
+    ],
+    "GlobalSecondaryIndexes": [
+        {
+            "IndexName": "total_score-index",
+            "KeySchema": [
+                {
+                    "AttributeName": "event_name",
+                    "KeyType": "HASH"
+                },
+                {
+                    "AttributeName": "total_score",
+                    "KeyType": "RANGE"
+                }
+            ],
+            "Projection": {
+                "ProjectionType": "INCLUDE",
+                "NonKeyAttributes": [
+                    "user_name",
+                    "quiz_run_id"
+                ]
+            },
+            "ProvisionedThroughput": {
+                "ReadCapacityUnits": 5,
+                "WriteCapacityUnits": 5
+            },
+            "OnDemandThroughput": {
+                "MaxReadRequestUnits": 5,
+                "MaxWriteRequestUnits": 5
+            }
+        }
+    ],
+    "BillingMode": "PROVISIONED",
+    "ProvisionedThroughput": {
+        "ReadCapacityUnits": 5,
+        "WriteCapacityUnits": 5
+    },
+    "TableClass": "STANDARD",
+    "StreamSpecification": {
+        "StreamEnabled": true,
+        "StreamViewType": "KEYS_ONLY"
+    }
+}

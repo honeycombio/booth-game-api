@@ -15,6 +15,28 @@ registerAutoTags({
   "stack": pulumi.getStack(),
 })
 
+const dynamodbResultsTable = new aws.dynamodb.Table("results", {
+  attributes: [
+    { name: "quiz_run_id", type: "S" },
+    { name: "event_name", type: "S" },
+    { name: "type", type: "S" },
+    { name: "total_score", type: "N" }
+    { name: "user_name", type: "S" }
+  ],
+  billingMode: "PAY_PER_REQUEST",
+  hashKey: "quiz_run_id",
+  rangeKey: "type",
+  globalSecondaryIndexes: [
+    {
+      name: "total_score_index",
+      hashKey: "event_name",
+      rangeKey: "total_score",
+      projectionType: "INCLUDE",
+      nonKeyAttributes: ["quiz_run_id", "user_name"]
+    }
+  ]
+});
+
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
   statements: [
     {

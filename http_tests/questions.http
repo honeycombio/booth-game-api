@@ -69,3 +69,13 @@ Content-Type: application/json
     "evaluation_id": "0c8f6bf813d6f1da51b9a8251c68b3f8-44ac67e629f6b89b",
     "opinion": "whoa"
 }
+
+### Get Execution Results
+
+GET {{hostname}}/api/results
+X-Honeycomb-Api-Key: {{AttendeeAPIKey}}
+X-Observaquiz-Execution-Id: 1234
+
+### Get Event Results
+
+GET {{hostname}}/api/events/devopsdays_whenever/results

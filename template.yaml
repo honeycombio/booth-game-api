@@ -29,7 +29,7 @@ Resources:
           query_data_api_key:
           deepchecks_api_key:
           use_local_stack: true
-          results_table: results-table
+          results_table_name: results-table
 
   CALLBACK:
     Type: AWS::Serverless::Function 
@@ -50,6 +50,20 @@ Resources:
           OTEL_EXPORTER_OTLP_ENDPOINT:
           OTEL_EXPORTER_OTLP_INSECURE:
           DEEPCHECKS_ENV_TYPE:
+
+  ProcessDynamoDBStream:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ./dist/result_calculator
+      Runtime: go1.x
+      Policies: AWSLambdaDynamoDBExecutionRole
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: arn:aws:dynamodb:us-east-1:000000000000:table/results-table/stream/2024-06-24T19:22:02.670
+            BatchSize: 100
+            StartingPosition: LATEST
 
 Outputs:
   WebEndpoint:
