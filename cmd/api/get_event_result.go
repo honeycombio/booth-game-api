@@ -9,7 +9,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -34,7 +33,7 @@ func getEventResults(currentContext context.Context, request events.APIGatewayV2
 	if err != nil {
 		var currentSpan = oteltrace.SpanFromContext(currentContext)
 
-		currentSpan.RecordError(err, trace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
+		currentSpan.RecordError(err, oteltrace.WithAttributes(attribute.String("error.message", "Failure marshalling JSON")))
 		return instrumentation.ErrorResponse("wtaf", 500), nil
 	}
 

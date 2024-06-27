@@ -20,7 +20,7 @@ const dynamodbResultsTable = new aws.dynamodb.Table("results", {
     { name: "quiz_run_id", type: "S" },
     { name: "event_name", type: "S" },
     { name: "type", type: "S" },
-    { name: "total_score", type: "N" }
+    { name: "total_score", type: "N" },
     { name: "user_name", type: "S" }
   ],
   billingMode: "PAY_PER_REQUEST",
@@ -35,6 +35,21 @@ const dynamodbResultsTable = new aws.dynamodb.Table("results", {
       nonKeyAttributes: ["quiz_run_id", "user_name"]
     }
   ]
+});
+
+const dynamodbFullAccessPolicy = new aws.iam.Policy("dynamodb-full-access", {
+  policy: {
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Action: [
+          "dynamodb:*"
+        ],
+        Resource: dynamodbResultsTable.arn
+      }
+    ]
+  }
 });
 
 const lambdaLoggingPolicyDocument = aws.iam.getPolicyDocument({
@@ -55,6 +70,11 @@ const lambdaExecutionRole = new aws.iam.Role("execution-role", {
       policy: lambdaLoggingPolicyDocument.then((policy) => policy.json),
     },
   ],
+});
+
+const lambdaPolicyAttachment = new aws.iam.RolePolicyAttachment("lambdaDynamoDbAccessAttachment", {
+  role: lambdaExecutionRole.name,
+  policyArn: dynamodbFullAccessPolicy.arn,
 });
 
 const apiLambda = new aws.lambda.Function("api-lambda", {
