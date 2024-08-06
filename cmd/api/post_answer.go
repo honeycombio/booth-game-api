@@ -117,6 +117,7 @@ func postAnswer(currentContext context.Context, request events.APIGatewayV2HTTPR
 
 	} else if questionDefinition.Version == "v2" {
 		llmResponse, errorResponse = respondToAnswerV2(currentContext, questionDefinition, answer)
+		postQuestionSpan.SetAttributes(attribute.String("app.llm.output", llmResponse.response))
 	}
 	if errorResponse != nil {
 		return instrumentation.ErrorResponse(errorResponse.message, errorResponse.statusCode), nil
